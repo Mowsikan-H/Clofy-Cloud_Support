@@ -5,7 +5,74 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
 
+// Add these imports
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
 function IncidentDetail() {
+  const { id } = useParams();
+const [incident, setIncident] = useState(null);
+const [comments, setComments] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+const [commentText, setCommentText] = useState('');
+const [submitting, setSubmitting] = useState(false);
+const { currentUser } = useAuth();
+
+// Add this useEffect to fetch the incident data
+useEffect(() => {
+  const fetchIncidentData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.incidents.getById(id);
+      
+      if (response.success) {
+        setIncident(response.data);
+        setComments(response.data.comments || []);
+      } else {
+        setError(response.message || 'Failed to fetch incident');
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchIncidentData();
+}, [id]);
+
+// Add this function to handle comment submission
+const handleCommentSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!commentText.trim()) {
+    return;
+  }
+  
+  try {
+    setSubmitting(true);
+    
+    const response = await api.comments.create({
+      incident: id,
+      content: commentText
+    });
+    
+    if (response.success) {
+      setComments([...comments, response.data]);
+      setCommentText('');
+    } else {
+      alert(response.message || 'Failed to post comment');
+    }
+  } catch (err) {
+    alert(err.message || 'An error occurred');
+  } finally {
+    setSubmitting(false);
+  }
+};
+
   return (
     <div className="bg-light min-vh-100">
       <Header />

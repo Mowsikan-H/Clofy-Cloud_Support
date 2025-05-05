@@ -4,8 +4,34 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
+import { api } from '../services/api';
+import { useState, useEffect } from 'react';
 
 function IncidentsList() {
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchIncidents = async () => {
+      try {
+        setLoading(true);
+        const response = await api.incidents.getAll();
+        if (response.success) {
+          setIncidents(response.data);
+        } else {
+          setError(response.message || 'Failed to fetch incidents');
+        }
+      } catch (err) {
+        setError(err.message || 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchIncidents();
+  }, []);
+  
   return (
     <div className="bg-light min-vh-100">
       <Header />
@@ -36,61 +62,58 @@ function IncidentsList() {
                 className="border rounded px-3 py-2"
               />
             </Form.Group>
+          
             
-            {/* Questions List */}
-            <div className="d-flex flex-column gap-3">
-              {/* Example Item */}
-              <Card className="shadow-sm hover-border-primary">
-                <Card.Body className="p-3">
-                  <div className="d-flex">
-                    <div className="text-center me-3" style={{ width: '80px' }}>
-                      <div className="fw-bold fs-5 text-primary">5</div>
-                      <div className="small text-muted">answers</div>
-                    </div>
-                    <div className="text-center me-3" style={{ width: '80px' }}>
-                      <div className="fw-bold fs-5">12</div>
-                      <div className="small text-muted">votes</div>
-                    </div>
-                    <div>
-                      <Link to="/incident/1" className="text-primary fw-medium fs-5 text-decoration-none">How to configure AWS IAM roles for cross-account access?</Link>
-                      <p className="text-muted small mt-2">I need to allow services in one AWS account to access resources in another. What's the best practice for setting up IAM roles for cross-account access?</p>
-                      <div className="mt-2 d-flex flex-wrap gap-2">
-                        <Badge bg="light" text="dark" className="rounded-pill">aws</Badge>
-                        <Badge bg="light" text="dark" className="rounded-pill">iam</Badge>
-                        <Badge bg="light" text="dark" className="rounded-pill">security</Badge>
+            {loading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="alert alert-danger">{error}</div>
+            ) : incidents.length === 0 ? (
+              <div className="text-center py-5">
+                <p className="text-muted">No incidents found. Be the first to submit a question!</p>
+                <Button as={Link} to="/submit-incident" variant="primary" className="mt-3">
+                  Submit Question
+                </Button>
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-3">
+                {incidents.map(incident => (
+                  <Card key={incident._id} className="shadow-sm hover-border-primary">
+                    <Card.Body className="p-3">
+                      <div className="d-flex">
+                        <div className="text-center me-3" style={{ width: '80px' }}>
+                          <div className="fw-bold fs-5 text-primary">{incident.comments?.length || 0}</div>
+                          <div className="small text-muted">answers</div>
+                        </div>
+                        <div className="text-center me-3" style={{ width: '80px' }}>
+                          <div className="fw-bold fs-5">{incident.votes || 0}</div>
+                          <div className="small text-muted">votes</div>
+                        </div>
+                        <div>
+                          <Link to={`/incident/${incident._id}`} className="text-primary fw-medium fs-5 text-decoration-none">
+                            {incident.title}
+                          </Link>
+                          <p className="text-muted small mt-2">{incident.description.substring(0, 150)}...</p>
+                          <div className="mt-2 d-flex flex-wrap gap-2">
+                            {incident.tags.map(tag => (
+                              <Badge key={tag} bg="light" text="dark" className="rounded-pill">{tag}</Badge>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-muted small">
+                            asked by <span className="fw-medium">{incident.user?.name || 'Anonymous'}</span> • 
+                            {new Date(incident.createdAt).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-muted small">asked by <span className="fw-medium">user123</span> • 1 hour ago</p>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-              
-              {/* Additional question items would follow the same pattern */}
-              <Card className="shadow-sm hover-border-primary">
-                <Card.Body className="p-3">
-                  <div className="d-flex">
-                    <div className="text-center me-3" style={{ width: '80px' }}>
-                      <div className="fw-bold fs-5 text-primary">2</div>
-                      <div className="small text-muted">answers</div>
-                    </div>
-                    <div className="text-center me-3" style={{ width: '80px' }}>
-                      <div className="fw-bold fs-5">8</div>
-                      <div className="small text-muted">votes</div>
-                    </div>
-                    <div>
-                      <Link to="/incident/2" className="text-primary fw-medium fs-5 text-decoration-none">Azure VM scale set autoscaling not triggering</Link>
-                      <p className="text-muted small mt-2">My Azure VM scale set isn't scaling out despite high CPU usage. I've configured autoscaling rules but they don't seem to be working.</p>
-                      <div className="mt-2 d-flex flex-wrap gap-2">
-                        <Badge bg="light" text="dark" className="rounded-pill">azure</Badge>
-                        <Badge bg="light" text="dark" className="rounded-pill">vm</Badge>
-                        <Badge bg="light" text="dark" className="rounded-pill">scaling</Badge>
-                      </div>
-                      <p className="mt-2 text-muted small">asked by <span className="fw-medium">azure_dev</span> • 3 hours ago</p>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+            )}
           </Col>
           
           {/* Right Sidebar */}

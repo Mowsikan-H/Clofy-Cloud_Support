@@ -4,6 +4,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+// Add this import
+import EnvDebug from '../components/EnvDebug';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -84,6 +86,8 @@ function Login() {
         </Row>
       </Container>
       <Footer />
+      {/* Then add the component inside your return statement, just before the Card */}
+      <EnvDebug />
     </div>
   );
 }

@@ -23,36 +23,73 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Login function
+  // Update the login function to use the real API
   async function login(email, password) {
-    // This is a mock implementation
-    // In a real app, you would call your authentication API
-    return new Promise((resolve, reject) => {
-      // Simulate API call
-      setTimeout(() => {
-        // For demo, accept any email with password "password"
-        if (password === 'password') {
-          const user = { email, name: email.split('@')[0] };
-          localStorage.setItem('user', JSON.stringify(user));
-          setCurrentUser(user);
-          resolve(user);
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 1000);
-    });
+    try {
+      console.log('Attempting login with:', { email });
+      
+      // Use the REAL login endpoint, not the test one
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+      
+      // Save token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setCurrentUser(data.user);
+      return data.user;
+    } catch (error) {
+      console.error('Login error details:', error);
+      throw error;
+    }
   }
 
   // Register function
-  async function register(email, password) {
-    // This is a mock implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const user = { email, name: email.split('@')[0] };
-        localStorage.setItem('user', JSON.stringify(user));
-        setCurrentUser(user);
-        resolve(user);
-      }, 1000);
-    });
+  async function register(email, password, name) {
+    try {
+      console.log('Attempting registration with:', { email, name });
+      
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          email, 
+          password,
+          name: name || email.split('@')[0] // Use provided name or generate from email
+        })
+      });
+      
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+      
+      // Save token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setCurrentUser(data.user);
+      return data.user;
+    } catch (error) {
+      console.error('Registration error details:', error);
+      throw error;
+    }
   }
 
   // Logout function

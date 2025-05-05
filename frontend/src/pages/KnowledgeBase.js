@@ -1,12 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
+import { api } from '../services/api';
 
 function KnowledgeBase() {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        setLoading(true);
+        const params = {};
+        
+        if (activeCategory !== 'all') {
+          params.category = activeCategory;
+        }
+        
+        const response = await api.knowledgeBase.getAll(params);
+        
+        if (response.success) {
+          setArticles(response.data);
+        } else {
+          setError(response.message || 'Failed to fetch articles');
+        }
+      } catch (err) {
+        setError(err.message || 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchArticles();
+  }, [activeCategory]);
+  
+  // Add this function to handle search
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  // Filter articles based on search term
+  const filteredArticles = articles.filter(article => 
+    article.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    article.content?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   
   return (
     <div className="bg-light min-vh-100">
@@ -63,51 +106,43 @@ function KnowledgeBase() {
                 type="text" 
                 placeholder="Search docs..." 
                 className="border rounded px-3 py-2"
+                value={searchTerm}
+                onChange={handleSearch}
               />
             </Form.Group>
             
-            {/* Docs List */}
-            <div className="d-flex flex-column gap-4">
-              {/* Doc Card */}
-              <Card className="shadow-sm hover-border-primary">
-                <Card.Body className="p-4">
-                  <h2 className="fs-4 fw-semibold text-primary mb-2">
-                    <Link to="/knowledge-base/1" className="text-decoration-none">Configuring AWS VPC Peering</Link>
-                  </h2>
-                  <p className="text-muted mb-3">Learn how to set up and manage VPC peering connections between AWS accounts for secure network communication.</p>
-                  <div className="d-flex justify-content-between align-items-center small text-muted">
-                    <span>Category: Tutorials</span>
-                    <span>Updated: Apr 15, 2025</span>
-                  </div>
-                </Card.Body>
-              </Card>
-              
-              <Card className="shadow-sm hover-border-primary">
-                <Card.Body className="p-4">
-                  <h2 className="fs-4 fw-semibold text-primary mb-2">
-                    <Link to="/knowledge-base/2" className="text-decoration-none">Azure VM Scale Set Autoscaling</Link>
-                  </h2>
-                  <p className="text-muted mb-3">Step-by-step guide to configure autoscaling rules on Azure Virtual Machine Scale Sets to handle variable workloads.</p>
-                  <div className="d-flex justify-content-between align-items-center small text-muted">
-                    <span>Category: How-To Guides</span>
-                    <span>Updated: Mar 28, 2025</span>
-                  </div>
-                </Card.Body>
-              </Card>
-              
-              <Card className="shadow-sm hover-border-primary">
-                <Card.Body className="p-4">
-                  <h2 className="fs-4 fw-semibold text-primary mb-2">
-                    <Link to="/knowledge-base/3" className="text-decoration-none">Troubleshooting GCP IAM Permissions</Link>
-                  </h2>
-                  <p className="text-muted mb-3">Identify and resolve common IAM permission errors in Google Cloud Platform with example policies and CLI commands.</p>
-                  <div className="d-flex justify-content-between align-items-center small text-muted">
-                    <span>Category: Troubleshooting</span>
-                    <span>Updated: Feb 20, 2025</span>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
+            {/* Loading and Error States */}
+            {loading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="alert alert-danger">{error}</div>
+            ) : filteredArticles.length === 0 ? (
+              <div className="text-center py-5">
+                <p className="text-muted">No articles found.</p>
+              </div>
+            ) : (
+              /* Docs List */
+              <div className="d-flex flex-column gap-4">
+                {filteredArticles.map(article => (
+                  <Card key={article._id} className="shadow-sm hover-border-primary">
+                    <Card.Body className="p-4">
+                      <h2 className="fs-4 fw-semibold text-primary mb-2">
+                        <Link to={`/knowledge-base/${article._id}`} className="text-decoration-none">{article.title}</Link>
+                      </h2>
+                      <p className="text-muted mb-3">{article.summary || article.content.substring(0, 150)}...</p>
+                      <div className="d-flex justify-content-between align-items-center small text-muted">
+                        <span>Category: {article.category}</span>
+                        <span>Updated: {new Date(article.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+            )}
           </Col>
           
           {/* Right Sidebar */}

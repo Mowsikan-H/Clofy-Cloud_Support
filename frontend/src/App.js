@@ -27,6 +27,9 @@ import SLADashboard from './pages/SLADashboard';
 import TagsCategories from './pages/TagsCategories';
 import UserProfile from './pages/UserProfile';
 
+// Add this import
+import KnowledgeBaseDetail from './pages/KnowledgeBaseDetail';
+
 function App() {
   return (
     <Router>
@@ -61,11 +64,10 @@ function App() {
                 <IncidentsList />
               </PrivateRoute>
             } />
-            <Route path="/knowledge-base" element={
-              <PrivateRoute>
-                <KnowledgeBase />
-              </PrivateRoute>
-            } />
+           
+            {/* Knowledge Base Routes */}
+            <Route path="/knowledge-base" element={<KnowledgeBase />} />
+            <Route path="/knowledge-base/:id" element={<KnowledgeBaseDetail />} />
             <Route path="/account-billing" element={
               <PrivateRoute>
                 <AccountBilling />
