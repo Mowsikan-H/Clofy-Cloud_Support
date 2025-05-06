@@ -60,8 +60,8 @@ function UserProfile() {
                   </Nav.Link>
                   <Nav.Link 
                     as="button" 
-                    className={`border-0 bg-transparent ${activeTab === 'questions' ? 'text-primary fw-medium' : 'text-muted'}`}
-                    onClick={() => setActiveTab('questions')}
+                    className={`border-0 bg-transparent ${activeTab === 'posts' ? 'text-primary fw-medium' : 'text-muted'}`}
+                    onClick={() => setActiveTab('posts')}
                   >
                     Questions
                   </Nav.Link>

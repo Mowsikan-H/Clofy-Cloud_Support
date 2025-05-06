@@ -80,7 +80,7 @@ const handleCommentSubmit = async (e) => {
         <Row>
           {/* Left Sidebar */}
           <Col lg={2} className="d-none d-lg-block">
-            <Sidebar activePage="questions" />
+            <Sidebar activePage="posts" />
           </Col>
           
           {/* Main Content */}

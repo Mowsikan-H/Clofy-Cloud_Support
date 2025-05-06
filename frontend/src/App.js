@@ -37,7 +37,7 @@ function App() {
         <ToastProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<IncidentsList />} /> {/* Changed from Landing to IncidentsList */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/pricing" element={<PricingPlans />} />

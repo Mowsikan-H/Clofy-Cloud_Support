@@ -7,12 +7,10 @@ function Sidebar({ activePage }) {
   const currentPath = location.pathname;
   
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: 'bi-speedometer2' },
-    { id: 'questions', label: 'All Questions', path: '/incidents', icon: 'bi-question-circle' },
-    { id: 'submit', label: 'Submit Incident', path: '/submit-incident', icon: 'bi-plus-circle' },
-    { id: 'mytickets', label: 'My Tickets', path: '/my-queries', icon: 'bi-ticket' },
-    { id: 'analytics', label: 'Analytics', path: '/sla-dashboard', icon: 'bi-graph-up' },
-    { id: 'settings', label: 'Settings', path: '/profile', icon: 'bi-gear' },
+  { id: 'questions', label: 'All Posts', path: '/incidents', icon: 'bi-list-ul' },
+    { id: 'submit', label: 'Submit Post', path: '/submit-incident', icon: 'bi-plus-circle' },
+    { id: 'mytickets', label: 'My Posts', path: '/my-queries', icon: 'bi-ticket' },
+    { id: 'settings', label: 'My Profile', path: '/profile', icon: 'bi-gear' },
   ];
 
   return (

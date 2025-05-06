@@ -47,7 +47,7 @@ router.post('/login-test', async (req, res) => {
     // For testing only
     const user = await User.findOne().select('+password');
     if (!user) {
-      return res.status(401).json({ success: false, message: 'No users in database' });
+      return res.status(zz401).json({ success: false, message: 'No users in database' });
     }
     
     // Generate token

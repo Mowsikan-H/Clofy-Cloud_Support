@@ -56,9 +56,7 @@ function Header() {
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="ms-auto d-flex align-items-center">
-              <Nav.Link as={Link} to="/dashboard" className="me-3 px-2 py-1 rounded hover-bg-light">Dashboard</Nav.Link>
-              <Nav.Link as={Link} to="/incidents" className="me-3 px-2 py-1 rounded hover-bg-light">Questions</Nav.Link>
-              <Nav.Link as={Link} to="/submit-incident" className="me-3 px-2 py-1 rounded hover-bg-light">Submit Incident</Nav.Link>
+              
               
               {currentUser ? (
                 <Dropdown align="end">
