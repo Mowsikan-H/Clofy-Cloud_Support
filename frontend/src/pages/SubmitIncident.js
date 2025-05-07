@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -11,40 +11,138 @@ function SubmitIncident() {
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+  const [type, setType] = useState('question'); // Default to question
+  const [provider, setProvider] = useState('aws');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Issue form specific states
+  const [timestamp, setTimestamp] = useState('');
+  const [service, setService] = useState('');
+  const [urgency, setUrgency] = useState('medium');
+  const [components, setComponents] = useState('');
+  const [category, setCategory] = useState('performance');
+  const [region, setRegion] = useState('');
+  
+  // News form specific states
+  const [newsDate, setNewsDate] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [excerpt, setExcerpt] = useState('');
+  
+  // Poll form specific states
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '']);
+  const [duration, setDuration] = useState('7');
+  
+  // Step tracking for issue form
+  const [currentStep, setCurrentStep] = useState(1);
+  
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const tagInputRef = useRef(null);
+  
+  // Reset form fields when type changes
+  useEffect(() => {
+    // Reset common fields
+    setTitle('');
+    setDescription('');
+    setTags([]);
+    setProvider('aws');
+    
+    // Reset form-specific fields
+    if (type === 'issue') {
+      setTimestamp('');
+      setService('');
+      setUrgency('medium');
+      setComponents('');
+      setCategory('performance');
+      setRegion('');
+      setCurrentStep(1);
+    } else if (type === 'news') {
+      setNewsDate('');
+      setSourceUrl('');
+      setExcerpt('');
+    } else if (type === 'poll') {
+      setQuestion('');
+      setOptions(['', '']);
+      setDuration('7');
+    }
+  }, [type]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!title.trim() || !description.trim()) {
-      setError('Please provide both a title and description');
-      return;
+    // Validation based on form type
+    if (type === 'question' || type === 'other') {
+      if (!title.trim() || !description.trim()) {
+        setError('Please provide both a title and description');
+        return;
+      }
+    } else if (type === 'issue') {
+      if (!title.trim() || !timestamp || !service.trim()) {
+        setError('Please fill in all required fields');
+        return;
+      }
+    } else if (type === 'news') {
+      if (!title.trim()) {
+        setError('Please provide a headline');
+        return;
+      }
+    } else if (type === 'poll') {
+      if (!question.trim() || options.some(opt => !opt.trim())) {
+        setError('Please provide a question and at least two options');
+        return;
+      }
     }
     
     try {
       setLoading(true);
       setError(null);
       
-      const tagsArray = tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
+      // Prepare data based on form type
+      let data = {
+        type,
+        title: type === 'news' ? title : type === 'poll' ? question : title,
+        tags: tags,
+        provider
+      };
       
-      const response = await api.incidents.create({
-        title,
-        description,
-        tags: tagsArray,
-        priority: 'medium' // Default priority
-      });
+      if (type === 'question' || type === 'other') {
+        data.description = description;
+      } else if (type === 'issue') {
+        data = {
+          ...data,
+          description,
+          timestamp,
+          service,
+          urgency,
+          components,
+          category,
+          region
+        };
+      } else if (type === 'news') {
+        data = {
+          ...data,
+          newsDate,
+          sourceUrl,
+          excerpt
+        };
+      } else if (type === 'poll') {
+        data = {
+          ...data,
+          options,
+          duration
+        };
+      }
+      
+      const response = await api.incidents.create(data);
       
       if (response.success) {
         navigate(`/incident/${response.data._id}`);
       } else {
-        setError(response.message || 'Failed to create incident');
+        setError(response.message || 'Failed to create submission');
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -52,6 +150,673 @@ function SubmitIncident() {
       setLoading(false);
     }
   };
+
+  const handleTagInputKeyDown = (e) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (tags.length < 5 && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagsContainerClick = () => {
+    if (tagInputRef.current) {
+      tagInputRef.current.focus();
+    }
+  };
+  
+  const handleOptionChange = (index, value) => {
+    const newOptions = [...options];
+    newOptions[index] = value;
+    setOptions(newOptions);
+  };
+  
+  const addOption = () => {
+    if (options.length < 6) {
+      setOptions([...options, '']);
+    }
+  };
+  
+  // Render different forms based on type
+  const renderFormFields = () => {
+    switch(type) {
+      case 'question':
+        return (
+          <>
+            {/* Brief Title */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Brief Title <span className="text-muted small">(one sentence)</span>
+              </Form.Label>
+              <Form.Control 
+                type="text" 
+                required 
+                placeholder="e.g. 'AWS S3 bucket access issue'"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Detailed Description */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Detailed Description <span className="text-muted small">(optional)</span>
+              </Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={6}
+                placeholder="Provide more context, logs, error messages, links..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Provider and Tags Row */}
+            <Row className="mb-4">
+              {/* Cloud Provider */}
+              <Col md={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="fw-medium">Cloud Service Provider</Form.Label>
+                  <Form.Select
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                  >
+                    <option value="aws">AWS</option>
+                    <option value="azure">Azure</option>
+                    <option value="gcp">Google Cloud</option>
+                    <option value="ibm">IBM Cloud</option>
+                    <option value="oracle">Oracle Cloud</option>
+                    <option value="ovh">OVHcloud</option>
+                    <option value="other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              
+              {/* Tags */}
+              <Col md={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="fw-medium">
+                    Tags <span className="text-muted small">(add up to 5)</span>
+                  </Form.Label>
+                  <div 
+                    className="border rounded p-2 d-flex flex-wrap align-items-center" 
+                    style={{ minHeight: '42px', cursor: 'text' }}
+                    onClick={handleTagsContainerClick}
+                  >
+                    {tags.map((tag, index) => (
+                      <span 
+                        key={index} 
+                        className="bg-light rounded-pill px-2 py-1 me-1 mb-1 d-inline-flex align-items-center"
+                      >
+                        {tag}
+                        <Button 
+                          variant="link" 
+                          className="p-0 ms-1 text-muted" 
+                          style={{ fontSize: '0.8rem' }}
+                          onClick={() => removeTag(tag)}
+                        >
+                          ×
+                        </Button>
+                      </span>
+                    ))}
+                    <Form.Control
+                      ref={tagInputRef}
+                      type="text"
+                      className="border-0 flex-grow-1"
+                      style={{ minWidth: '60px', width: 'auto' }}
+                      placeholder={tags.length === 0 ? "Type and press Enter..." : ""}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagInputKeyDown}
+                    />
+                  </div>
+                  <Form.Text className="text-muted small">
+                    Use tags like 'storage', 'serverless', 'security'.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+          </>
+        );
+        
+      case 'issue':
+        return (
+          <>
+            {/* Stepper */}
+            <div className="d-flex justify-content-between mb-4">
+              <div className={`text-center flex-fill ${currentStep === 1 ? 'text-primary' : 'text-muted'}`}>
+                <div className={`rounded-circle d-inline-flex align-items-center justify-content-center mb-2 ${currentStep === 1 ? 'bg-primary text-white' : 'bg-light'}`} style={{width: '30px', height: '30px'}}>
+                  1
+                </div>
+                <div>Core Details</div>
+              </div>
+              <div className={`text-center flex-fill ${currentStep === 2 ? 'text-primary' : 'text-muted'}`}>
+                <div className={`rounded-circle d-inline-flex align-items-center justify-content-center mb-2 ${currentStep === 2 ? 'bg-primary text-white' : 'bg-light'}`} style={{width: '30px', height: '30px'}}>
+                  2
+                </div>
+                <div>Additional Context</div>
+              </div>
+            </div>
+            
+            {currentStep === 1 ? (
+              <>
+                {/* Problem Summary */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Describe the problem in one sentence</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    required 
+                    placeholder="e.g. 'API returns 500 on upload'"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </Form.Group>
+                
+                {/* When did it start */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">When did it start?</Form.Label>
+                  <Form.Control 
+                    type="datetime-local" 
+                    required
+                    value={timestamp}
+                    onChange={(e) => setTimestamp(e.target.value)}
+                  />
+                </Form.Group>
+                
+                <Row className="mb-4">
+                  {/* Cloud Provider */}
+                  <Col md={6} className="mb-3">
+                    <Form.Group>
+                      <Form.Label className="fw-medium">Cloud Provider</Form.Label>
+                      <Form.Select
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value)}
+                      >
+                        <option value="aws">Amazon Web Services (AWS)</option>
+                        <option value="azure">Microsoft Azure</option>
+                        <option value="gcp">Google Cloud Platform (GCP)</option>
+                        <option value="ibm">IBM Cloud</option>
+                        <option value="oracle">Oracle Cloud Infrastructure (OCI)</option>
+                        <option value="ovh">OVHcloud</option>
+                        <option value="other">Other</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  
+                  {/* Affected Service */}
+                  <Col md={6} className="mb-3">
+                    <Form.Group>
+                      <Form.Label className="fw-medium">Affected Service</Form.Label>
+                      <Form.Control 
+                        type="text" 
+                        required
+                        placeholder="e.g. S3, Azure VM, Pub/Sub"
+                        value={service}
+                        onChange={(e) => setService(e.target.value)}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                
+                {/* Urgency Level */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Urgency Level</Form.Label>
+                  <Form.Select
+                    value={urgency}
+                    onChange={(e) => setUrgency(e.target.value)}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </Form.Select>
+                </Form.Group>
+                
+                <div className="d-flex justify-content-between mt-4">
+                  <Button 
+                    variant="secondary"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    Next: More Context
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Affected Components */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Affected Components <span className="text-muted small">(optional)</span></Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="e.g. web-frontend, database"
+                    value={components}
+                    onChange={(e) => setComponents(e.target.value)}
+                  />
+                </Form.Group>
+                
+                {/* Issue Category */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Issue Category</Form.Label>
+                  <Form.Select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    <option value="performance">Performance</option>
+                    <option value="availability">Availability</option>
+                    <option value="security">Security</option>
+                    <option value="config">Configuration</option>
+                    <option value="integration">Integration</option>
+                    <option value="other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+                
+                {/* Affected Region */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Affected Region <span className="text-muted small">(optional)</span></Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="e.g. us-east-1, eu-west-2"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                  />
+                </Form.Group>
+                
+                {/* Detailed Description */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">Detailed Description <span className="text-muted small">(optional)</span></Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={6}
+                    placeholder="Any additional details..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </Form.Group>
+                
+                {/* Tags */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-medium">
+                    Tags <span className="text-muted small">(add up to 5)</span>
+                  </Form.Label>
+                  <div 
+                    className="border rounded p-2 d-flex flex-wrap align-items-center" 
+                    style={{ minHeight: '42px', cursor: 'text' }}
+                    onClick={handleTagsContainerClick}
+                  >
+                    {tags.map((tag, index) => (
+                      <span 
+                        key={index} 
+                        className="bg-light rounded-pill px-2 py-1 me-1 mb-1 d-inline-flex align-items-center"
+                      >
+                        {tag}
+                        <Button 
+                          variant="link" 
+                          className="p-0 ms-1 text-muted" 
+                          style={{ fontSize: '0.8rem' }}
+                          onClick={() => removeTag(tag)}
+                        >
+                          ×
+                        </Button>
+                      </span>
+                    ))}
+                    <Form.Control
+                      ref={tagInputRef}
+                      type="text"
+                      className="border-0 flex-grow-1"
+                      style={{ minWidth: '60px', width: 'auto' }}
+                      placeholder={tags.length === 0 ? "Type and press Enter..." : ""}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagInputKeyDown}
+                    />
+                  </div>
+                  <Form.Text className="text-muted small">
+                    Use tags like 'storage', 'serverless', 'security'.
+                  </Form.Text>
+                </Form.Group>
+                
+                <div className="d-flex justify-content-between mt-4">
+                  <Button 
+                    variant="secondary"
+                    onClick={() => setCurrentStep(1)}
+                  >
+                    Back
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
+        );
+        
+      case 'news':
+        return (
+          <>
+            {/* Headline */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Headline <span className="text-muted small">(one sentence)</span>
+              </Form.Label>
+              <Form.Control 
+                type="text" 
+                required 
+                placeholder="e.g. 'AWS launches new S3 feature'"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Date of News */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Date of News <span className="text-muted small">(optional)</span>
+              </Form.Label>
+              <Form.Control 
+                type="date"
+                value={newsDate}
+                onChange={(e) => setNewsDate(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Source URL */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Source URL <span className="text-muted small">(optional)</span>
+              </Form.Label>
+              <Form.Control 
+                type="url" 
+                placeholder="https://example.com/article"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Excerpt / Summary */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Excerpt / Summary <span className="text-muted small">(optional, 1-2 sentences)</span>
+              </Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={4}
+                placeholder="Provide a brief summary..."
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Cloud Provider */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">Cloud Provider</Form.Label>
+              <Form.Select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+              >
+                <option value="all">All Providers</option>
+                <option value="aws">Amazon Web Services (AWS)</option>
+                <option value="azure">Microsoft Azure</option>
+                <option value="gcp">Google Cloud Platform (GCP)</option>
+                <option value="ibm">IBM Cloud</option>
+                <option value="oracle">Oracle Cloud Infrastructure (OCI)</option>
+                <option value="ovh">OVHcloud</option>
+                <option value="other">Other</option>
+              </Form.Select>
+            </Form.Group>
+            
+            {/* Tags */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Tags <span className="text-muted small">(add up to 5)</span>
+              </Form.Label>
+              <div 
+                className="border rounded p-2 d-flex flex-wrap align-items-center" 
+                style={{ minHeight: '42px', cursor: 'text' }}
+                onClick={handleTagsContainerClick}
+              >
+                {tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className="bg-light rounded-pill px-2 py-1 me-1 mb-1 d-inline-flex align-items-center"
+                  >
+                    {tag}
+                    <Button 
+                      variant="link" 
+                      className="p-0 ms-1 text-muted" 
+                      style={{ fontSize: '0.8rem' }}
+                      onClick={() => removeTag(tag)}
+                    >
+                      ×
+                    </Button>
+                  </span>
+                ))}
+                <Form.Control
+                  ref={tagInputRef}
+                  type="text"
+                  className="border-0 flex-grow-1"
+                  style={{ minWidth: '60px', width: 'auto' }}
+                  placeholder={tags.length === 0 ? "Type and press Enter..." : ""}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                />
+              </div>
+              <Form.Text className="text-muted small">
+                Use tags like 'release', 'feature', 'security'.
+              </Form.Text>
+            </Form.Group>
+          </>
+        );
+        
+      case 'poll':
+        return (
+          <>
+            {/* Poll Question */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Poll Question <span className="text-muted small">(one sentence)</span>
+              </Form.Label>
+              <Form.Control 
+                type="text" 
+                required 
+                placeholder="e.g. 'Which cloud provider do you prefer for serverless?'"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Poll Options */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Poll Options <span className="text-muted small">(min 2, max 6)</span>
+              </Form.Label>
+              {options.map((option, index) => (
+                <div key={index} className="d-flex mb-2">
+                  <Form.Control 
+                    type="text" 
+                    required
+                    placeholder={`Option ${index + 1}`}
+                    value={option}
+                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                  />
+                </div>
+              ))}
+              {options.length < 6 && (
+                <Button 
+                  variant="light" 
+                  size="sm" 
+                  onClick={addOption}
+                  className="mt-2"
+                >
+                  + Add another option
+                </Button>
+              )}
+            </Form.Group>
+            
+            {/* Poll Duration */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">Poll Duration (days)</Form.Label>
+              <Form.Select
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              >
+                <option value="1">1 day</option>
+                <option value="3">3 days</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+              </Form.Select>
+            </Form.Group>
+            
+            {/* Tags */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Tags <span className="text-muted small">(add up to 5)</span>
+              </Form.Label>
+              <div 
+                className="border rounded p-2 d-flex flex-wrap align-items-center" 
+                style={{ minHeight: '42px', cursor: 'text' }}
+                onClick={handleTagsContainerClick}
+              >
+                {tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className="bg-light rounded-pill px-2 py-1 me-1 mb-1 d-inline-flex align-items-center"
+                  >
+                    {tag}
+                    <Button 
+                      variant="link" 
+                      className="p-0 ms-1 text-muted" 
+                      style={{ fontSize: '0.8rem' }}
+                      onClick={() => removeTag(tag)}
+                    >
+                      ×
+                    </Button>
+                  </span>
+                ))}
+                <Form.Control
+                  ref={tagInputRef}
+                  type="text"
+                  className="border-0 flex-grow-1"
+                  style={{ minWidth: '60px', width: 'auto' }}
+                  placeholder={tags.length === 0 ? "Type and press Enter..." : ""}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                />
+              </div>
+              <Form.Text className="text-muted small">
+                Use tags like 'opinion', 'feedback', 'community'.
+              </Form.Text>
+            </Form.Group>
+          </>
+        );
+
+        default: // Other
+        return (
+          <>
+            {/* Brief Title */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Brief Title <span className="text-muted small">(one sentence)</span>
+              </Form.Label>
+              <Form.Control 
+                type="text" 
+                required 
+                placeholder="e.g. 'Feature request or suggestion'"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Detailed Description */}
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-medium">
+                Detailed Description <span className="text-muted small">(required)</span>
+              </Form.Label>
+              <Form.Control 
+                as="textarea" 
+                rows={6}
+                required
+                placeholder="Provide detailed information about your submission..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Form.Group>
+            
+            {/* Provider and Tags Row */}
+            <Row className="mb-4">
+              {/* Cloud Provider */}
+              <Col md={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="fw-medium">Related Cloud Service</Form.Label>
+                  <Form.Select
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                  >
+                    <option value="aws">AWS</option>
+                    <option value="azure">Azure</option>
+                    <option value="gcp">Google Cloud</option>
+                    <option value="ibm">IBM Cloud</option>
+                    <option value="oracle">Oracle Cloud</option>
+                    <option value="ovh">OVHcloud</option>
+                    <option value="other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              
+              {/* Tags */}
+              <Col md={6} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="fw-medium">
+                    Tags <span className="text-muted small">(add up to 5)</span>
+                  </Form.Label>
+                  <div 
+                    className="border rounded p-2 d-flex flex-wrap align-items-center" 
+                    style={{ minHeight: '42px', cursor: 'text' }}
+                    onClick={handleTagsContainerClick}
+                  >
+                    {tags.map((tag, index) => (
+                      <span 
+                        key={index} 
+                        className="bg-light rounded-pill px-2 py-1 me-1 mb-1 d-inline-flex align-items-center"
+                      >
+                        {tag}
+                        <Button 
+                          variant="link" 
+                          className="p-0 ms-1 text-muted" 
+                          style={{ fontSize: '0.8rem' }}
+                          onClick={() => removeTag(tag)}
+                        >
+                          ×
+                        </Button>
+                      </span>
+                    ))}
+                    <Form.Control
+                      ref={tagInputRef}
+                      type="text"
+                      className="border-0 flex-grow-1"
+                      style={{ minWidth: '60px', width: 'auto' }}
+                      placeholder={tags.length === 0 ? "Type and press Enter..." : ""}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagInputKeyDown}
+                    />
+                  </div>
+                  <Form.Text className="text-muted small">
+                    Use tags like 'feature-request', 'documentation', 'improvement'.
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+          </>
+        );
+    }
+  }
 
   return (
     <div className="bg-light min-vh-100">
@@ -67,90 +832,38 @@ function SubmitIncident() {
           <Col lg={7} md={8}>
             <Card className="shadow-sm">
               <Card.Body className="p-4">
-                <h2 className="fs-3 fw-semibold mb-3">Submit a New Incident</h2>
-                <p className="text-muted small mb-4">Fill out the form below to get community support or upgrade for AI/engineer help.</p>
+                <h2 className="fs-3 fw-semibold mb-3">Submit Your Cloud Query or News</h2>
+                <p className="text-muted small mb-4">Use this form to share cloud-related news, ask questions, report issues, or submit suggestions.</p>
                 
                 {error && <Alert variant="danger">{error}</Alert>}
                 
                 <Form onSubmit={handleSubmit}>
-                  {/* Problem Description */}
+                  {/* Type of Submission */}
                   <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Problem Description <span className="text-danger">*</span></Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      required 
-                      placeholder="One-sentence summary of the problem"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
+                    <Form.Label className="fw-medium">Type of Submission</Form.Label>
+                    <Form.Select 
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                    >
+                      <option value="question">Question</option>
+                      <option value="issue">Issue</option>
+                      <option value="news">News</option>
+                      <option value="poll">Poll</option>
+                      <option value="other">Other</option>
+                    </Form.Select>
                   </Form.Group>
                   
-                  {/* Dropdown Grid */}
-                  <Row className="mb-4">
-                    {/* Incident Category */}
-                    <Col md={6} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-medium">Incident Category</Form.Label>
-                        <Form.Select>
-                          <option>Cloud Service Outage</option>
-                          <option>Cloud Storage Issues</option>
-                          <option>Performance Degradation</option>
-                          <option>Cloud Network Issues</option>
-                          <option>Security Breach</option>
-                          <option>Access/Permissions Issue</option>
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    
-                    {/* Cloud Provider */}
-                    <Col md={6} className="mb-3">
-                      <Form.Group>
-                        <Form.Label className="fw-medium">Cloud Provider</Form.Label>
-                        <Form.Select>
-                          <option>AWS</option>
-                          <option>Azure</option>
-                          <option>Google Cloud</option>
-                          <option>IBM Cloud</option>
-                          <option>Oracle Cloud</option>
-                          <option>Other</option>
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                  
-                  {/* Detailed Description */}
-                  <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Detailed Description <span className="text-danger">*</span></Form.Label>
-                    <Form.Control 
-                      as="textarea" 
-                      rows={6} 
-                      required
-                      placeholder="Describe the issue in detail. Include any error messages, steps to reproduce, and what you've already tried."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                  </Form.Group>
-                  
-                  {/* Tags */}
-                  <Form.Group className="mb-4">
-                    <Form.Label className="fw-medium">Tags</Form.Label>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="e.g., ec2, s3, networking, security (comma separated)"
-                      value={tags}
-                      onChange={(e) => setTags(e.target.value)}
-                    />
-                    <Form.Text className="text-muted">Add relevant tags to help others find your incident</Form.Text>
-                  </Form.Group>
+                  {renderFormFields()}
                   
                   {/* Submit Button */}
-                  <div className="d-grid gap-2 d-md-flex justify-content-md-end">
+                  <div className="d-grid mt-4">
                     <Button 
                       variant="primary" 
                       type="submit"
                       disabled={loading}
+                      className="py-2"
                     >
-                      {loading ? 'Submitting...' : 'Submit Incident'}
+                      {loading ? 'Submitting...' : 'Submit'}
                     </Button>
                   </div>
                 </Form>
