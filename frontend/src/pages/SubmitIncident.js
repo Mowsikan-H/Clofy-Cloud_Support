@@ -33,8 +33,8 @@ function SubmitIncident() {
   
   // Poll form specific states
   const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '']);
-  const [duration, setDuration] = useState('7');
+  const [options, setOptions] = useState(['', '']); 
+  const [duration, setDuration] = useState('7'); // Default 7 days
   
   // Step tracking for issue form
   const [currentStep, setCurrentStep] = useState(1);
@@ -74,67 +74,92 @@ function SubmitIncident() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation based on form type
-    if (type === 'question' || type === 'other') {
-      if (!title.trim() || !description.trim()) {
-        setError('Please provide both a title and description');
+    // Validate based on type
+    if (type === 'poll') {
+      if (!question.trim()) {
+        setError('Please provide a poll question');
+        return;
+      }
+      
+      // Check if at least two options are filled
+      const filledOptions = options.filter(opt => opt.trim());
+      if (filledOptions.length < 2) {
+        setError('Please provide at least two options');
         return;
       }
     } else if (type === 'issue') {
-      if (!title.trim() || !timestamp || !service.trim()) {
-        setError('Please fill in all required fields');
+      // For issues, only validate required fields
+      if (!title.trim()) {
+        setError('Please provide a title');
+        return;
+      }
+      if (currentStep === 1 && !timestamp) {
+        setError('Please provide when the issue started');
+        return;
+      }
+      if (currentStep === 1 && !service.trim()) {
+        setError('Please provide the affected service');
         return;
       }
     } else if (type === 'news') {
+      // For news, only validate the headline (title)
       if (!title.trim()) {
         setError('Please provide a headline');
         return;
       }
-    } else if (type === 'poll') {
-      if (!question.trim() || options.some(opt => !opt.trim())) {
-        setError('Please provide a question and at least two options');
-        return;
-      }
+    } else if (!title.trim() || !description.trim()) {
+      // For other types (question, other), require both title and description
+      setError('Please provide both a title and description');
+      return;
     }
     
     try {
       setLoading(true);
       setError(null);
       
-      // Prepare data based on form type
+      // Prepare data based on type
       let data = {
         type,
-        title: type === 'news' ? title : type === 'poll' ? question : title,
-        tags: tags,
-        provider
+        provider,
+        tags
       };
       
-      if (type === 'question' || type === 'other') {
-        data.description = description;
-      } else if (type === 'issue') {
+      if (type === 'poll') {
         data = {
           ...data,
-          description,
-          timestamp,
-          service,
-          urgency,
-          components,
-          category,
-          region
-        };
-      } else if (type === 'news') {
-        data = {
-          ...data,
-          newsDate,
-          sourceUrl,
-          excerpt
-        };
-      } else if (type === 'poll') {
-        data = {
-          ...data,
-          options,
+          title: question, // Map question to title for backend compatibility
+          question,
+          options: options.filter(opt => opt.trim()), // Filter out empty options
           duration
         };
+      } else {
+        data = {
+          ...data,
+          title,
+          description
+        };
+        
+        // Add type-specific fields
+        if (type === 'issue') {
+          data = {
+            ...data,
+            timestamp,
+            service,
+            urgency,
+            components,
+            category,
+            region,
+            description: description || '' // Ensure description is at least an empty string
+          };
+        } else if (type === 'news') {
+          data = {
+            ...data,
+            newsDate,
+            sourceUrl,
+            excerpt,
+            description: description || '' // Ensure description is at least an empty string
+          };
+        }
       }
       
       const response = await api.incidents.create(data);
@@ -142,7 +167,7 @@ function SubmitIncident() {
       if (response.success) {
         navigate(`/incident/${response.data._id}`);
       } else {
-        setError(response.message || 'Failed to create submission');
+        setError(response.message || 'Failed to create incident');
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -181,6 +206,12 @@ function SubmitIncident() {
   const addOption = () => {
     if (options.length < 6) {
       setOptions([...options, '']);
+    }
+  };
+  const removeOption = (index) => {
+    if (options.length > 2) {
+      const newOptions = options.filter((_, i) => i !== index);
+      setOptions(newOptions);
     }
   };
   
@@ -613,6 +644,7 @@ function SubmitIncident() {
           </>
         );
         
+      // In your poll case of renderFormFields function
       case 'poll':
         return (
           <>

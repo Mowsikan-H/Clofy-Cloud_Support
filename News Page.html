@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit News - Cloud Forum</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; background: #f0f2f5; display: flex; }
+    .sidebar { width: 200px; background: #2b2b2b; color: #fff; padding: 20px; height: 100vh; box-sizing: border-box; }
+    .sidebar h2 { font-size: 1.1rem; margin-top: 0; }
+    .sidebar nav a { color: #ccc; text-decoration: none; display: block; margin: 10px 0; }
+    .sidebar nav a:hover { color: #fff; }
+    .main { flex: 1; padding: 40px; overflow-y: auto; }
+    .card { background: #fff; border-radius: 8px; padding: 30px; max-width: 700px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { margin-top: 0; color: #333; }
+    label { display: block; margin: 20px 0 5px; font-weight: bold; }
+    input[type='text'], input[type='url'], input[type='date'], select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    textarea { resize: vertical; height: 120px; }
+    .row { display: flex; gap: 20px; flex-wrap: wrap; }
+    .col { flex: 1; min-width: 200px; }
+    .tags-input { display: flex; flex-wrap: wrap; border: 1px solid #ccc; padding: 5px; border-radius: 4px; cursor: text; }
+    .tags-input input { border: none; flex: 1; padding: 5px; outline: none; }
+    .button { margin-top: 30px; padding: 12px 24px; border: none; border-radius: 4px; background: #0078d4; color: #fff; font-size: 1rem; cursor: pointer; }
+    .button:hover { background: #005fa3; }
+    .field-note { font-size: 0.85rem; color: #777; margin-top: 3px; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Cloud Forum</h2>
+    <nav>
+      <a href="#submit">Submit News</a>
+      <a href="#newsList">News</a>
+      <a href="#guidelines">Guidelines</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <div class="card">
+      <h1>Submit a News Item</h1>
+      <form id="newsForm">
+        <label for="headline">Headline <span class="field-note">(one sentence)</span></label>
+        <input type="text" id="headline" name="headline" placeholder="e.g. 'AWS launches new S3 feature'" required />
+
+        <label for="newsDate">Date of News <span class="field-note">(optional)</span></label>
+        <input type="date" id="newsDate" name="newsDate" />
+
+        <label for="sourceUrl">Source URL <span class="field-note">(optional)</span></label>
+        <input type="url" id="sourceUrl" name="sourceUrl" placeholder="https://example.com/article" />
+
+        <label for="excerpt">Excerpt / Summary <span class="field-note">(optional, 1-2 sentences)</span></label>
+        <textarea id="excerpt" name="excerpt" placeholder="Provide a brief summary..."></textarea>
+
+        <label for="provider">Cloud Provider</label>
+        <select id="provider" name="provider" required>
+          <option value="all">All Providers</option>
+          <option value="aws">Amazon Web Services (AWS)</option>
+          <option value="azure">Microsoft Azure</option>
+          <option value="gcp">Google Cloud Platform (GCP)</option>
+          <option value="ibm">IBM Cloud</option>
+          <option value="oci">Oracle Cloud Infrastructure (OCI)</option>
+          <option value="alibaba">Alibaba Cloud</option>
+          <option value="salesforce">Salesforce</option>
+          <option value="vmware">VMware Cloud</option>
+          <option value="rackspace">Rackspace</option>
+          <option value="digitalocean">DigitalOcean</option>
+          <option value="hpe">Hewlett Packard Enterprise (HPE)</option>
+          <option value="openshift">Red Hat OpenShift</option>
+          <option value="sap">SAP</option>
+          <option value="servicenow">ServiceNow</option>
+          <option value="cisco">Cisco Cloud</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="text" id="providerOther" name="providerOther" placeholder="Please specify" class="hidden" />
+
+        <label for="tags">Tags <span class="field-note">(add up to 5)</span></label>
+        <div class="tags-input" id="tagsInput">
+          <input type="text" id="tagInput" placeholder="Type and press Enter..." />
+        </div>
+        <div class="field-note">Use tags like 'release', 'feature', 'security'.</div>
+
+        <button type="submit" class="button">Publish News</button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // Toggle 'Other' provider field
+    const providerSelect = document.getElementById('provider');
+    const providerOther = document.getElementById('providerOther');
+    providerSelect.addEventListener('change', () => {
+      providerOther.style.display = providerSelect.value === 'other' ? 'block' : 'none';
+    });
+
+    // Tag input logic
+    const tagsInput = document.getElementById('tagsInput');
+    const tagInput = document.getElementById('tagInput');
+    let tags = [];
+    tagInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && tagInput.value.trim()) {
+        e.preventDefault();
+        const tag = tagInput.value.trim();
+        if (tags.length < 5 && !tags.includes(tag)) {
+          tags.push(tag);
+          const tagEl = document.createElement('span');
+          tagEl.textContent = tag;
+          tagEl.style = 'background:#e0e0e0;border-radius:3px;padding:3px 6px;margin:3px;display:inline-block;';
+          tagsInput.insertBefore(tagEl, tagInput);
+        }
+        tagInput.value = '';
+      }
+    });
+
+    document.getElementById('newsForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const data = {
+        headline: this.headline.value,
+        date: this.newsDate.value,
+        url: this.sourceUrl.value,
+        excerpt: this.excerpt.value,
+        provider: this.provider.value === 'other' ? this.providerOther.value : this.provider.value,
+        tags: tags,
+      };
+      console.log('News submission:', data);
+      alert('Thank you! Your news item has been published.');
+      this.reset(); tags = []; tagsInput.querySelectorAll('span').forEach(el => el.remove());
+      providerOther.style.display = 'none';
+    });
+  </script>
+</body>
+</html>

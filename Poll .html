@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit Poll - Cloud Forum</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; display: flex; }
+    .sidebar { width: 200px; background: #2b2b2b; color: #fff; padding: 20px; height: 100vh; box-sizing: border-box; }
+    .sidebar h2 { font-size: 1.1rem; margin-top: 0; }
+    .sidebar nav a { color: #ccc; text-decoration: none; display: block; margin: 10px 0; }
+    .sidebar nav a:hover { color: #fff; }
+    .main { flex: 1; padding: 40px; overflow-y: auto; }
+    .card { background: #fff; border-radius: 8px; padding: 30px; max-width: 700px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { margin-top: 0; color: #333; }
+    label { display: block; margin: 20px 0 5px; font-weight: bold; }
+    input[type='text'], select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    .option-field { display: flex; gap: 10px; margin-bottom: 10px; }
+    .option-field input[type='text'] { flex: 1; }
+    .button, .add-option { margin-top: 20px; padding: 10px 16px; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    .button { background: #0078d4; color: #fff; }
+    .button:hover { background: #005fa3; }
+    .add-option { background: #e0e0e0; color: #333; }
+    .add-option:hover { background: #ccc; }
+    .field-note { font-size: 0.85rem; color: #777; margin-top: 3px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Cloud Forum</h2>
+    <nav>
+      <a href="#submit">Submit Poll</a>
+      <a href="#recent">Recent Posts</a>
+      <a href="#guidelines">Guidelines</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <div class="card">
+      <h1>Submit a Poll</h1>
+      <form id="pollForm">
+        <label for="question">Poll Question <span class="field-note">(one sentence)</span></label>
+        <input type="text" id="question" name="question" placeholder="e.g. 'Which cloud provider do you prefer for serverless?'" required />
+
+        <label>Poll Options <span class="field-note">(min 2, max 6)</span></label>
+        <div id="optionsContainer">
+          <div class="option-field">
+            <input type="text" name="options[]" placeholder="Option 1" required />
+          </div>
+          <div class="option-field">
+            <input type="text" name="options[]" placeholder="Option 2" required />
+          </div>
+        </div>
+        <button type="button" class="add-option" id="addOptionBtn">+ Add another option</button>
+
+        <label for="duration">Poll Duration (days)</label>
+        <select id="duration" name="duration">
+          <option value="1">1 day</option>
+          <option value="3">3 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="14">14 days</option>
+        </select>
+
+        <button type="submit" class="button">Launch Poll</button>
+      </form>
+    </div>
+  </main>
+  <script>
+    const addOptionBtn = document.getElementById('addOptionBtn');
+    const optionsContainer = document.getElementById('optionsContainer');
+    addOptionBtn.addEventListener('click', () => {
+      const optionCount = optionsContainer.querySelectorAll('.option-field').length;
+      if (optionCount < 6) {
+        const div = document.createElement('div'); div.className = 'option-field';
+        div.innerHTML = `<input type='text' name='options[]' placeholder='Option ${optionCount + 1}' required />`;
+        optionsContainer.appendChild(div);
+      }
+    });
+
+    document.getElementById('pollForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const data = {
+        question: formData.get('question'),
+        options: formData.getAll('options[]'),
+        duration: formData.get('duration')
+      };
+      console.log('Poll submission:', data);
+      alert('Your poll has been launched!');
+      this.reset();
+      optionsContainer.innerHTML = `
+        <div class="option-field"><input type="text" name="options[]" placeholder="Option 1" required /></div>
+        <div class="option-field"><input type="text" name="options[]" placeholder="Option 2" required /></div>
+      `;
+    });
+  </script>
+</body>
+</html>

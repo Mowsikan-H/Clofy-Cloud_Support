@@ -1,17 +1,25 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Protect routes
 exports.protect = async (req, res, next) => {
   let token;
   
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    // Get token from header
+  // Check if auth header exists and has the right format
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    // Extract token from Bearer token
     token = req.headers.authorization.split(' ')[1];
   }
   
   // Check if token exists
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized to access this route'
+    });
   }
   
   try {
@@ -22,19 +30,20 @@ exports.protect = async (req, res, next) => {
     req.user = await User.findById(decoded.id);
     
     if (!req.user) {
-      return res.status(401).json({ success: false, message: 'User not found' });
-    }
-    
-    if (req.user.status !== 'active') {
-      return res.status(403).json({ success: false, message: 'Your account is not active' });
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
     }
     
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Not authorized to access this route' });
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized to access this route'
+    });
   }
 };
-
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {

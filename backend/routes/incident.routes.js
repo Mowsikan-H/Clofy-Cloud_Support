@@ -111,6 +111,39 @@ router.post('/', protect, async (req, res) => {
     // Add user to req.body
     req.body.user = req.user.id;
     
+    // Validate based on incident type
+    const { type } = req.body;
+    
+    if (type === 'question' || type === 'other') {
+      if (!req.body.title || !req.body.description) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Please provide both a title and description' 
+        });
+      }
+    } else if (type === 'issue') {
+      if (!req.body.title || !req.body.timestamp || !req.body.service) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Please fill in all required fields for an issue' 
+        });
+      }
+    } else if (type === 'news') {
+      if (!req.body.title) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Please provide a headline' 
+        });
+      }
+    } else if (type === 'poll') {
+      if (!req.body.question || !req.body.options || req.body.options.some(opt => !opt.trim())) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Please provide a question and at least two options' 
+        });
+      }
+    }
+    
     const incident = await Incident.create(req.body);
     
     res.status(201).json({
@@ -214,6 +247,55 @@ router.post('/:id/comments', protect, async (req, res) => {
     res.status(201).json({
       success: true,
       data: comment
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Vote on a poll option
+router.post('/:id/vote', protect, async (req, res) => {
+  try {
+    const { optionIndex } = req.body;
+    
+    if (optionIndex === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please provide an option to vote for' 
+      });
+    }
+    
+    const incident = await Incident.findById(req.params.id);
+    
+    if (!incident) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Incident not found' 
+      });
+    }
+    
+    if (incident.type !== 'poll') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This incident is not a poll' 
+      });
+    }
+    
+    if (optionIndex < 0 || optionIndex >= incident.options.length) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid option index' 
+      });
+    }
+    
+    // Here you would typically track who voted for what
+    // For simplicity, we're just incrementing a vote counter
+    incident.votes += 1;
+    await incident.save();
+    
+    res.status(200).json({
+      success: true,
+      data: incident
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

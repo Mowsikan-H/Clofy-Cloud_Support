@@ -1,12 +1,89 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Button, Badge, ProgressBar } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
+import { api } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 function MyQueries() {
   const [activeFilter, setActiveFilter] = useState('all');
+  const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { currentUser } = useAuth();
+  
+  useEffect(() => {
+    const fetchUserIncidents = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching user incidents...');
+        
+        // Check if api.incidents exists
+        if (!api || !api.incidents || !api.incidents.getAll) {
+          console.error('API service not properly configured:', api);
+          throw new Error('API service not properly configured');
+        }
+        
+        // Check if the getUserIncidents method exists, otherwise fall back to getAll with filtering
+        if (api.incidents.getUserIncidents) {
+          // Use dedicated endpoint to fetch only user's incidents
+          const response = await api.incidents.getUserIncidents(currentUser?.id);
+          console.log('API response:', response);
+          
+          if (response && response.success) {
+            setIncidents(response.data || []);
+          } else {
+            console.error('API error:', response);
+            setError((response && response.message) || 'Failed to fetch incidents');
+          }
+        } else {
+          // Fallback to the current approach if getUserIncidents is not available
+          const response = await api.incidents.getAll();
+          console.log('API response:', response);
+          
+          if (response && response.success) {
+            // Filter incidents to only show those created by the current user
+            const userIncidents = response.data.filter(incident => 
+              incident.userId === currentUser?.id || incident.createdBy === currentUser?.id
+            );
+            setIncidents(userIncidents || []);
+          } else {
+            console.error('API error:', response);
+            setError((response && response.message) || 'Failed to fetch incidents');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching user incidents:', err);
+        setError(err.message || 'An error occurred while connecting to the server');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserIncidents();
+  }, [currentUser]);
+  
+  // Filter incidents by status if activeFilter is not 'all'
+  const filteredIncidents = incidents.filter(incident => {
+    if (activeFilter === 'all') return true;
+    return incident.status === activeFilter;
+  });
+  
+  // Function to render the appropriate status badge
+  const renderStatusBadge = (status) => {
+    switch(status) {
+      case 'open':
+        return <Badge bg="danger">Open</Badge>;
+      case 'answered':
+        return <Badge bg="success">Answered</Badge>;
+      case 'escalated':
+        return <Badge bg="warning" text="dark">Escalated</Badge>;
+      default:
+        return <Badge bg="secondary">Processing</Badge>;
+    }
+  };
   
   return (
     <div className="bg-light min-vh-100">
@@ -20,7 +97,7 @@ function MyQueries() {
           
           {/* Main Content */}
           <Col lg={7} md={8}>
-            <h2 className="fs-3 fw-semibold mb-4">My Tickets</h2>
+            <h2 className="fs-3 fw-semibold mb-4">My Posts</h2>
             
             {/* Status Filter */}
             <div className="d-flex flex-wrap gap-2 mb-4">
@@ -50,69 +127,52 @@ function MyQueries() {
               </Button>
             </div>
 
-            {/* Tickets List */}
-            <div className="d-flex flex-column gap-3">
-              {/* Ticket Item */}
-              <Card className="shadow-sm">
-                <Card.Body className="p-3">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <Link to="/incident/1" className="text-primary fw-medium fs-5 text-decoration-none">S3 bucket access denied on public endpoint</Link>
-                      <p className="text-muted small mt-1">Submitted: 2025-04-30 • Tags: 
-                        <Badge bg="light" text="dark" className="ms-1 me-1">aws-s3</Badge>
-                        <Badge bg="light" text="dark">permissions</Badge>
-                      </p>
-                    </div>
-                    <div className="text-end">
-                      <Badge bg="success" className="mb-2">Answered</Badge>
-                      <div>
-                        <Button variant="primary" size="sm">Upgrade</Button>
+            {/* Loading and Error States */}
+            {loading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="alert alert-danger">{error}</div>
+            ) : filteredIncidents.length === 0 ? (
+              <div className="text-center py-5">
+                <p className="text-muted">No posts found.</p>
+                <Link to="/submit-incident" className="btn btn-primary mt-2">Create a New Post</Link>
+              </div>
+            ) : (
+              /* Posts List */
+              <div className="d-flex flex-column gap-3">
+                {filteredIncidents.map(incident => (
+                  <Card key={incident._id} className="shadow-sm">
+                    <Card.Body className="p-3">
+                      <div className="d-flex justify-content-between">
+                        <div>
+                          <Link to={`/incident/${incident._id}`} className="text-primary fw-medium fs-5 text-decoration-none">
+                            {incident.title}
+                          </Link>
+                          <p className="text-muted small mt-1">
+                            Submitted: {new Date(incident.createdAt).toLocaleDateString()} • Tags: 
+                            {incident.tags && incident.tags.map(tag => (
+                              <Badge key={tag} bg="light" text="dark" className="ms-1 me-1">{tag}</Badge>
+                            ))}
+                          </p>
+                        </div>
+                        <div className="text-end">
+                          {renderStatusBadge(incident.status)}
+                          <div className="mt-2">
+                            {incident.status !== 'answered' && (
+                              <Button variant="primary" size="sm">Upgrade</Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-              
-              <Card className="shadow-sm">
-                <Card.Body className="p-3">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <Link to="/incident/2" className="text-primary fw-medium fs-5 text-decoration-none">Error provisioning Azure VM instance</Link>
-                      <p className="text-muted small mt-1">Submitted: 2025-05-01 • Tags: 
-                        <Badge bg="light" text="dark" className="ms-1 me-1">azure-vm</Badge>
-                        <Badge bg="light" text="dark">provisioning</Badge>
-                      </p>
-                    </div>
-                    <div className="text-end">
-                      <Badge bg="danger" className="mb-2">Open</Badge>
-                      <div>
-                        <Button variant="primary" size="sm">Upgrade</Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-              
-              <Card className="shadow-sm">
-                <Card.Body className="p-3">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <Link to="/incident/3" className="text-primary fw-medium fs-5 text-decoration-none">Network latency spikes in GCP load balancer</Link>
-                      <p className="text-muted small mt-1">Submitted: 2025-04-28 • Tags: 
-                        <Badge bg="light" text="dark" className="ms-1 me-1">gcp</Badge>
-                        <Badge bg="light" text="dark">networking</Badge>
-                      </p>
-                    </div>
-                    <div className="text-end">
-                      <Badge bg="warning" text="dark" className="mb-2">Escalated</Badge>
-                      <div>
-                        <Button variant="primary" size="sm">Upgrade</Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+            )}
           </Col>
           
           {/* Right Sidebar */}
@@ -120,12 +180,18 @@ function MyQueries() {
             {/* Summary */}
             <Card className="shadow-sm mb-4">
               <Card.Body className="p-4">
-                <h4 className="fs-5 fw-semibold mb-2">Ticket Summary</h4>
+                <h4 className="fs-5 fw-semibold mb-2">Post Summary</h4>
                 <ul className="list-unstyled small">
-                  <li className="mb-2">Total Tickets: <span className="fw-medium">12</span></li>
-                  <li className="mb-2">Open: <span className="fw-medium">4</span></li>
-                  <li className="mb-2">Answered: <span className="fw-medium">6</span></li>
-                  <li>Escalated: <span className="fw-medium">2</span></li>
+                  <li className="mb-2">Total Posts: <span className="fw-medium">{incidents.length}</span></li>
+                  <li className="mb-2">Open: <span className="fw-medium">
+                    {incidents.filter(incident => incident.status === 'open').length}
+                  </span></li>
+                  <li className="mb-2">Answered: <span className="fw-medium">
+                    {incidents.filter(incident => incident.status === 'answered').length}
+                  </span></li>
+                  <li>Escalated: <span className="fw-medium">
+                    {incidents.filter(incident => incident.status === 'escalated').length}
+                  </span></li>
                 </ul>
               </Card.Body>
             </Card>
@@ -146,4 +212,4 @@ function MyQueries() {
   );
 }
 
-export default MyQueries
+export default MyQueries;

@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
-const incidentRoutes = require('./routes/incident.routes');
+const incidentRoutes = require('./routes/incidentRoutes');
 const knowledgeBaseRoutes = require('./routes/knowledgeBase.routes');
 
 // Use routes

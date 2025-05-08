@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Community Forum</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 40px auto; background: #fff; padding: 20px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; }
+    h1 { margin-bottom: 20px; font-size: 1.8rem; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input[type="text"], input[type="email"], textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    textarea { resize: vertical; height: 120px; }
+    .optional { font-weight: normal; font-size: 0.9rem; color: #666; margin-left: 4px; }
+    .row { display: flex; flex-wrap: wrap; gap: 20px; }
+    .col { flex: 1; min-width: 200px; }
+    .tags-input { display: flex; flex-wrap: wrap; border: 1px solid #ccc; padding: 5px; border-radius: 4px; cursor: text; }
+    .tags-input input { border: none; flex: 1; padding: 5px; outline: none; }
+    .button { margin-top: 20px; padding: 12px 20px; border: none; border-radius: 4px; background: #0078d4; color: #fff; font-size: 1rem; cursor: pointer; }
+    .button:hover { background: #005fa3; }
+    .field-note { font-size: 0.85rem; color: #777; margin-top: 3px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Submit Your Cloud Query or News</h1>
+    <p>Use this form to share cloud-related news, ask questions, report issues, or submit suggestions.</p>
+    <form id="cloudForm">
+      <label for="type">Type of Submission</label>
+      <select id="type" name="type" required>
+        <option value="question">Question</option>
+        <option value="issue">Issue</option>
+        <option value="news">News</option>
+        <option value="suggestion">Suggestion</option>
+      </select>
+
+      <label for="title">Brief Title <span class="optional">(one sentence)</span></label>
+      <input type="text" id="title" name="title" placeholder="e.g. 'AWS S3 bucket access issue'" required>
+
+      <label for="description">Detailed Description <span class="optional">(optional)</span></label>
+      <textarea id="description" name="description" placeholder="Provide more context, logs, error messages, links..."></textarea>
+
+      <div class="row">
+        <div class="col">
+          <label for="provider">Cloud Service Provider</label>
+          <select id="provider" name="provider" required>
+            <option value="aws">AWS</option>
+            <option value="azure">Azure</option>
+            <option value="gcp">GCP</option>
+            <option value="ibm">IBM Cloud</option>
+            <option value="oracle">Oracle Cloud</option>
+            <option value="ovh">OVHcloud</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="col">
+          <label for="tags">Tags <span class="optional">(add up to 5)</span></label>
+          <div class="tags-input" id="tagsInput">
+            <input type="text" id="tagInput" placeholder="Type and press Enter...">
+          </div>
+          <div class="field-note">Use tags like 'storage', 'serverless', 'security'.</div>
+        </div>
+      </div>
+
+      <button type="submit" class="button">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    // Basic tag input logic
+    const tagsInput = document.getElementById('tagsInput');
+    const tagInput = document.getElementById('tagInput');
+    let tags = [];
+    tagInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && tagInput.value.trim()) {
+        e.preventDefault();
+        const tag = tagInput.value.trim();
+        if (tags.length < 5 && !tags.includes(tag)) {
+          tags.push(tag);
+          const tagEl = document.createElement('span');
+          tagEl.textContent = tag;
+          tagEl.style = 'background:#e0e0e0;border-radius:3px;padding:3px 6px;margin:2px;display:inline-block;';
+          tagsInput.insertBefore(tagEl, tagInput);
+        }
+        tagInput.value = '';
+      }
+    });
+    
+    document.getElementById('cloudForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const data = {
+        type: this.type.value,
+        title: this.title.value,
+        description: this.description.value,
+        provider: this.provider.value,
+        tags: tags,
+      };
+      console.log('Submitted data:', data);
+      // Here you would send `data` to your backend or API
+      alert('Thank you! Your submission has been received.');
+      this.reset(); tags = []; tagsInput.querySelectorAll('span').forEach(el=>el.remove());
+    });
+  </script>
+</body>
+</html>

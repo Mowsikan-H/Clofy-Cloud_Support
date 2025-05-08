@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Community Forum</title>
+  <style>
+    body { display: flex; margin: 0; font-family: Arial, sans-serif; background: #f5f5f5; }
+    .sidebar { width: 240px; background: #2b2b2b; color: #fff; height: 100vh; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+    .sidebar h2 { font-size: 1.2rem; margin-top: 0; }
+    .sidebar nav a { display: block; color: #ddd; text-decoration: none; margin: 10px 0; }
+    .sidebar nav a:hover { color: #fff; }
+    .sidebar .section { margin-top: 30px; }
+    .content { flex: 1; overflow-y: auto; padding: 40px; box-sizing: border-box; }
+    .container { max-width: 600px; background: #fff; padding: 20px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; margin: auto; }
+    h1 { margin-bottom: 10px; font-size: 1.8rem; }
+    p.intro { margin-bottom: 20px; color: #555; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input[type="text"], textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    textarea { resize: vertical; height: 100px; }
+    .row { display: flex; flex-wrap: wrap; gap: 20px; }
+    .col { flex: 1; min-width: 200px; }
+    .tags-input { display: flex; flex-wrap: wrap; border: 1px solid #ccc; padding: 5px; border-radius: 4px; cursor: text; }
+    .tags-input input { border: none; flex: 1; padding: 5px; outline: none; }
+    .button { margin-top: 20px; padding: 12px 20px; border: none; border-radius: 4px; background: #0078d4; color: #fff; font-size: 1rem; cursor: pointer; }
+    .button:hover { background: #005fa3; }
+    .field-note { font-size: 0.85rem; color: #777; margin-top: 3px; }
+    .guidelines { font-size: 0.85rem; line-height: 1.4; }
+    .quick-links ul { list-style: none; padding: 0; }
+    .quick-links li { margin: 8px 0; }
+    .quick-links a { color: #0078d4; text-decoration: none; }
+    .quick-links a:hover { text-decoration: underline; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Cloud Forum</h2>
+    <nav class="quick-links">
+      <h3>Quick Launch</h3>
+      <ul>
+        <li><a href="#submit">New Submission</a></li>
+        <li><a href="#recent">Recent Posts</a></li>
+        <li><a href="#guidelines">Community Guidelines</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+    <div class="section guidelines" id="guidelines">
+      <h3>Community Guidelines</h3>
+      <ul>
+        <li>Be respectful and courteous.</li>
+        <li>Stay on topic (cloud computing).</li>
+        <li>No spam or promotions.</li>
+        <li>Use clear, descriptive titles.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="content">
+    <div class="container" id="submit">
+      <h1>Submit Your Cloud Query or News</h1>
+      <p class="intro">Share news, ask questions, report issues, or suggest improvements—focused solely on cloud topics.</p>
+      <form id="cloudForm">
+        <label for="type">Select the type of post you’d like to make:</label>
+        <select id="type" name="type" required>
+          <option value="question">Question</option>
+          <option value="issue">Issue</option>
+          <option value="news">News</option>
+          <option value="suggestion">Suggestion</option>
+          <option value="discussion">Discussion</option>
+          <option value="tip">Tip & Tricks</option>
+          <option value="tutorial">Tutorial</option>
+          <option value="case-study">Case Study</option>
+          <option value="event">Event</option>
+          <option value="resource">Resource</option>
+          <option value="feature-request">Feature Request</option>
+          <option value="best-practice">Best Practice</option>
+          <option value="poll">Poll</option>
+          <option value="other">Other</option>
+        </select>
+        <input type="text" id="typeOther" name="typeOther" placeholder="Please specify" class="hidden" />
+
+        <label for="title">Brief Title <span class="field-note">(one sentence)</span></label>
+        <input type="text" id="title" name="title" placeholder="e.g. 'AWS S3 bucket access issue'" required>
+
+        <label for="description">Detailed Description <span class="field-note">(optional)</span></label>
+        <textarea id="description" name="description" placeholder="Provide more context, logs, error messages, links..."></textarea>
+
+        <div class="row">
+          <div class="col">
+            <label for="provider">Cloud Provider</label>
+            <select id="provider" name="provider" required>
+              <option value="aws">Amazon Web Services (AWS)</option>
+              <option value="azure">Microsoft Azure</option>
+              <option value="gcp">Google Cloud Platform (GCP)</option>
+              <option value="ibm">IBM Cloud</option>
+              <option value="oci">Oracle Cloud Infrastructure (OCI)</option>
+              <option value="alibaba">Alibaba Cloud</option>
+              <option value="salesforce">Salesforce</option>
+              <option value="vmware">VMware Cloud</option>
+              <option value="rackspace">Rackspace</option>
+              <option value="digitalocean">DigitalOcean</option>
+              <option value="hpe">Hewlett Packard Enterprise (HPE)</option>
+              <option value="openshift">Red Hat OpenShift</option>
+              <option value="sap">SAP</option>
+              <option value="servicenow">ServiceNow</option>
+              <option value="cisco">Cisco Cloud</option>
+              <option value="other">Other</option>
+            </select>
+            <input type="text" id="providerOther" name="providerOther" placeholder="Please specify" class="hidden" />
+          </div>
+          <div class="col">
+            <label for="tags">Tags <span class="field-note">(add up to 5)</span></label>
+            <div class="tags-input" id="tagsInput">
+              <input type="text" id="tagInput" placeholder="Type and press Enter...">
+            </div>
+            <div class="field-note">Use tags like 'storage', 'serverless', 'security'.</div>
+          </div>
+        </div>
+
+        <button type="submit" class="button">Submit</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Toggle Other fields
+    const typeSelect = document.getElementById('type');
+    const typeOther = document.getElementById('typeOther');
+    typeSelect.addEventListener('change', () => {
+      typeOther.classList.toggle('hidden', typeSelect.value !== 'other');
+    });
+
+    const providerSelect = document.getElementById('provider');
+    const providerOther = document.getElementById('providerOther');
+    providerSelect.addEventListener('change', () => {
+      providerOther.classList.toggle('hidden', providerSelect.value !== 'other');
+    });
+
+    // Basic tag input logic
+    const tagsInput = document.getElementById('tagsInput');
+    const tagInput = document.getElementById('tagInput');
+    let tags = [];
+    tagInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && tagInput.value.trim()) {
+        e.preventDefault();
+        const tag = tagInput.value.trim();
+        if (tags.length < 5 && !tags.includes(tag)) {
+          tags.push(tag);
+          const tagEl = document.createElement('span');
+          tagEl.textContent = tag;
+          tagEl.style = 'background:#e0e0e0;border-radius:3px;padding:3px 6px;margin:2px;display:inline-block;';
+          tagsInput.insertBefore(tagEl, tagInput);
+        }
+        tagInput.value = '';
+      }
+    });
+    
+    document.getElementById('cloudForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const data = {
+        type: this.type.value === 'other' ? this.typeOther.value : this.type.value,
+        title: this.title.value,
+        description: this.description.value,
+        provider: this.provider.value === 'other' ? this.providerOther.value : this.provider.value,
+        tags: tags,
+      };
+      console.log('Submitted data:', data);
+      alert('Thank you! Your submission has been received.');
+      this.reset(); tags = []; tagsInput.querySelectorAll('span').forEach(el=>el.remove());
+    });
+  </script>
+</body>
+</html>
