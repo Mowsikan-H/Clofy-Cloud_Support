@@ -78,11 +78,7 @@ function App() {
                 <AdminModeration />
               </PrivateRoute>
             } />
-            <Route path="/my-queries" element={
-              <PrivateRoute>
-                <MyQueries />
-              </PrivateRoute>
-            } />
+            <Route path="/my-queries" element={<MyQueries />} /> {/* Removed PrivateRoute wrapper */}
             <Route path="/sla-dashboard" element={
               <PrivateRoute>
                 <SLADashboard />
@@ -93,11 +89,7 @@ function App() {
                 <TagsCategories />
               </PrivateRoute>
             } />
-            <Route path="/profile" element={
-              <PrivateRoute>
-                <UserProfile />
-              </PrivateRoute>
-            } />
+            <Route path="/profile" element={<UserProfile />} /> {/* Removed PrivateRoute wrapper */}
           </Routes>
         </ToastProvider>
       </AuthProvider>

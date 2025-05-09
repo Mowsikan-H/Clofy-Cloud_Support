@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // Register user
 router.post('/register', async (req, res) => {
@@ -130,6 +131,45 @@ router.get('/me', protect, async (req, res) => {
         role: user.role,
         aiCredits: user.aiCredits,
         engineerTickets: user.engineerTickets,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Upload avatar - moved outside the /me route
+router.post('/upload-avatar', protect, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Please upload a file' });
+    }
+
+    // Create the avatar URL
+    const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/avatars/${req.file.filename}`;
+    
+    // Update user's avatar in database
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { avatar: avatarUrl },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        aiCredits: user.aiCredits,
+        engineerTickets: user.engineerTickets,
+        avatar: user.avatar,
+        bio: user.bio,
+        company: user.company,
+        location: user.location,
+        website: user.website,
         createdAt: user.createdAt
       }
     });

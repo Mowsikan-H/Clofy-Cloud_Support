@@ -17,8 +17,8 @@ function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get the redirect path from location state or default to dashboard
-  const from = location.state?.from?.pathname || '/dashboard';
+  // Get the redirect path from location state or default to incidents list
+  const from = location.state?.from?.pathname || '/incidents';
   
   async function handleSubmit(e) {
     e.preventDefault();

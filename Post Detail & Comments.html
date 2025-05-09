@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post Detail & Comments - Cloud Forum</title>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; background: #f5f5f5; display: flex; }
+    .sidebar { width: 240px; background: #2b2b2b; color: #fff; padding: 20px; height: 100vh; box-sizing: border-box; }
+    .sidebar h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+    .sidebar nav a { display:block; color: #ccc; text-decoration:none; margin: 10px 0; }
+    .sidebar nav a:hover { color: #fff; }
+    .main { flex:1; padding: 30px; overflow-y:auto; background: #fff; max-width:800px; margin: auto; }
+    .post-header { border-bottom:1px solid #ddd; padding-bottom:20px; margin-bottom:20px; }
+    .post-header h1 { margin:0; color:#333; }
+    .post-meta { color:#777; font-size:0.85rem; margin-top:5px; }
+    .post-content { margin-top:20px; line-height:1.6; color:#444; }
+    .comments-section { margin-top:40px; }
+    .comments-section h2 { margin-bottom:20px; color:#333; }
+    .comment { display:flex; margin-bottom:20px; }
+    .comment-avatar { width:40px; height:40px; border-radius:50%; background:#ccc; margin-right:10px; }
+    .comment-body { background:#f9f9f9; border-radius:6px; padding:10px 15px; flex:1; }
+    .comment-body p { margin:5px 0; color:#333; }
+    .comment-meta { font-size:0.8rem; color:#777; }
+    .reply-btn { font-size:0.8rem; color:#0078d4; background:none; border:none; cursor:pointer; margin-top:5px; }
+    .reply-form { margin-top:20px; }
+    .reply-form textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; resize:vertical; height:80px; }
+    .reply-form button { margin-top:10px; padding:8px 16px; background:#0078d4; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .reply-form button:hover { background:#005fa3; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Cloud Forum</h2>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/search">Search</a>
+      <a href="/my-posts">My Submissions</a>
+      <a href="/settings">Settings</a>
+      <a href="/logout">Logout</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <div class="post-header">
+      <h1>How to Optimize AWS S3 Costs?</h1>
+      <div class="post-meta">Asked by <strong>Alice</strong> • AWS • May 5, 2025 • 3 answers</div>
+    </div>
+    <div class="post-content">
+      <p>I have a few S3 buckets storing logs and archival data. The storage costs are adding up. What are the best practices to reduce S3 costs without losing data accessibility?</p>
+      <ul>
+        <li>Lifecycle policies</li>
+        <li>Glacier vs. Intelligent Tiering</li>
+        <li>Data compression</li>
+      </ul>
+    </div>
+    <div class="comments-section">
+      <h2>Answers & Comments</h2>
+      <div class="comment">
+        <div class="comment-avatar"></div>
+        <div>
+          <div class="comment-body">
+            <p>You can set up lifecycle rules to move older logs to Glacier after 30 days automatically.</p>
+            <div class="comment-meta">Bob • 2 hours ago</div>
+            <button class="reply-btn" onclick="toggleReply(this)">Reply</button>
+            <div class="reply-form hidden">
+              <textarea placeholder="Write your reply..."></textarea>
+              <button onclick="submitReply(this)">Submit Reply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="comment">
+        <div class="comment-avatar"></div>
+        <div>
+          <div class="comment-body">
+            <p>Consider using S3 Intelligent-Tiering for unpredictable access patterns.</p>
+            <div class="comment-meta">Carol • 1 hour ago</div>
+            <button class="reply-btn" onclick="toggleReply(this)">Reply</button>
+            <div class="reply-form hidden">
+              <textarea placeholder="Write your reply..."></textarea>
+              <button onclick="submitReply(this)">Submit Reply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="reply-form">
+        <h3>Your Answer</h3>
+        <textarea placeholder="Write your answer..."></textarea>
+        <button>Post Answer</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function toggleReply(btn) {
+      const form = btn.nextElementSibling;
+      form.classList.toggle('hidden');
+    }
+    function submitReply(btn) {
+      // handle reply submission
+      alert('Reply submitted!');
+    }
+  </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 function SubmitIncident() {
   const [showModal, setShowModal] = useState(false);
+  const [showReadyModal, setShowReadyModal] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState([]);
@@ -165,7 +166,7 @@ function SubmitIncident() {
       const response = await api.incidents.create(data);
       
       if (response.success) {
-        navigate(`/incident/${response.data._id}`);
+        navigate(`/incidents`);
       } else {
         setError(response.message || 'Failed to create incident');
       }
@@ -175,6 +176,20 @@ function SubmitIncident() {
       setLoading(false);
     }
   };
+
+  // Check if the modal should be shown when component mounts
+  useEffect(() => {
+    const hideCloudModal = localStorage.getItem('hideCloudModal');
+    if (!hideCloudModal) {
+      setShowReadyModal(true);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Remove these lines from the component body
+  // const hideCloudModal = localStorage.getItem('hideCloudModal');
+  // if (!hideCloudModal) {
+  //   setShowReadyModal(true);
+  // }
 
   const handleTagInputKeyDown = (e) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -195,6 +210,15 @@ function SubmitIncident() {
     if (tagInputRef.current) {
       tagInputRef.current.focus();
     }
+  };
+  const handleStartPosting = () => {
+    setShowReadyModal(false);
+  };
+  
+  // Function to handle "Don't Show Again"
+  const handleDontShowAgain = () => {
+    localStorage.setItem('hideCloudModal', 'true');
+    setShowReadyModal(false);
   };
   
   const handleOptionChange = (index, value) => {
@@ -928,6 +952,32 @@ function SubmitIncident() {
         </Row>
       </Container>
       <Footer />
+      
+      {/* Ready to Share Modal */}
+  <Modal 
+    show={showReadyModal} 
+    onHide={() => setShowReadyModal(false)}
+    centered
+    backdrop="static"
+    keyboard={false}
+  >
+    <Modal.Header closeButton>
+      <Modal.Title>Ready to Share Your Cloud Post?</Modal.Title>
+    </Modal.Header>
+    <Modal.Body>
+      <p>You're about to contribute to our Cloud Forum—let's make it as helpful as possible!</p>
+      <ul>
+        <li><strong>Search existing threads</strong> to avoid duplicates.</li>
+        <li><strong>Summarize your cloud scenario</strong> in one sentence.</li>
+        <li><strong>List what you've tried</strong>—configurations, commands, uploads.</li>
+        <li><strong>Include details</strong> like provider (AWS/Azure/GCP), service, region, and any error messages.</li>
+      </ul>
+    </Modal.Body>
+    <Modal.Footer>
+      <Button variant="link" onClick={handleDontShowAgain}>Don't Show Again</Button>
+      <Button variant="primary" onClick={handleStartPosting}>Start Writing</Button>
+    </Modal.Footer>
+  </Modal>
     </div>
   );
 }

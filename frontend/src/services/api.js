@@ -181,11 +181,55 @@ export const incidents = {
   }
 };
 
+// Users API
+export const users = {
+  updateProfile: async (userData) => {
+    try {
+      const response = await axios.put('/api/users/profile', userData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+  
+  uploadAvatar: async (formData) => {
+    try {
+      const response = await axios.post('/auth/upload-avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+  
+  updatePassword: async (passwordData) => {
+    try {
+      const response = await axios.put('/api/users/password', passwordData);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+  
+  deleteAccount: async () => {
+    try {
+      const response = await axios.delete('/api/users/account');
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  }
+};
+
 // Export the API object
 export const api = {
   auth,
   knowledgeBase,
-  incidents
+  incidents,
+  users  // This line is already correct in your current file
 };
 
 export default api;

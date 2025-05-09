@@ -41,6 +41,27 @@ const UserSchema = new mongoose.Schema({
     enum: ['active', 'suspended', 'banned'],
     default: 'active'
   },
+
+  avatar: {
+    type: String,
+    default: ''
+  },
+  bio: {
+    type: String,
+    default: ''
+  },
+  company: {
+    type: String,
+    default: ''
+  },
+  location: {
+    type: String,
+    default: ''
+  },
+  website: {
+    type: String,
+    default: ''
+  },
   createdAt: {
     type: Date,
     default: Date.now

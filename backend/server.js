@@ -2,6 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path'); // Add this line
+const authRoutes = require('./routes/auth.routes');
+const incidentRoutes = require('./routes/incidentRoutes');
+const knowledgeBaseRoutes = require('./routes/knowledgeBase.routes');
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +25,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected successfully'))
@@ -30,12 +37,6 @@ mongoose.connect(process.env.MONGO_URI)
 app.get('/', (req, res) => {
   res.send('Cloud Solution Generator API is running');
 });
-
-// Import routes
-const authRoutes = require('./routes/auth.routes');
-const incidentRoutes = require('./routes/incidentRoutes');
-const knowledgeBaseRoutes = require('./routes/knowledgeBase.routes');
-
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/incidents', incidentRoutes);

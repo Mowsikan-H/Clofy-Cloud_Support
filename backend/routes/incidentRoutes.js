@@ -27,6 +27,6 @@ router.post('/:id/comments', protect, incidentController.addComment);
 // Add a reply to a comment
 router.post('/:id/comments/:commentId/replies', protect, incidentController.addReply);
 
-router.get('/incidents/user/:userId', incidentController.getUserIncidents);
+router.get('/user/:userId', incidentController.getUserIncidents);
 
 module.exports = router;

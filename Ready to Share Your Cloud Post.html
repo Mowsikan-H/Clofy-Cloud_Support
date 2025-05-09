@@ -1,0 +1,64 @@
+<!-- Cloud-Context “Ready to Share” Modal -->
+<div id="readyModal" class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="dismissModal()">×</button>
+    <h2>Ready to Share Your Cloud Post?</h2>
+    <p>You’re about to contribute to our Cloud Forum—let’s make it as helpful as possible!</p>
+    <ul>
+      <li><strong>Search existing threads</strong> to avoid duplicates.</li>
+      <li><strong>Summarize your cloud scenario</strong> in one sentence.</li>
+      <li><strong>List what you’ve tried</strong>—configurations, commands, uploads.</li>
+      <li><strong>Include details</strong> like provider (AWS/Azure/GCP), service, region, and any error messages.</li>
+    </ul>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="startPosting()">Start Writing</button>
+      <button class="btn-link" onclick="dontShowAgain()">Don’t Show Again</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: #fff; border-radius: 8px; padding: 24px; width: 90%; max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 1.2rem;
+  cursor: pointer;
+}
+.modal h2 { margin-top: 0; color: #333; }
+.modal p { color: #555; }
+.modal ul { padding-left: 20px; color: #555; }
+.modal-actions { text-align: right; margin-top: 20px; }
+.btn-primary {
+  background: #0078d4; color: #fff; border: none; padding: 10px 16px; border-radius: 4px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #005fa3; }
+.btn-link {
+  background: none; border: none; color: #0078d4; margin-left: 12px; cursor: pointer;
+}
+.btn-link:hover { text-decoration: underline; }
+</style>
+
+<script>
+// Only show once per user
+if (!localStorage.getItem('hideCloudModal')) {
+  document.getElementById('readyModal').style.display = 'flex';
+}
+
+function startPosting() {
+  document.getElementById('readyModal').style.display = 'none';
+  // proceed to form...
+}
+
+function dontShowAgain() {
+  localStorage.setItem('hideCloudModal', 'true');
+  document.getElementById('readyModal').style.display = 'none';
+}
+</script>

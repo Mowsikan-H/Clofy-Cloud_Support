@@ -1,17 +1,29 @@
 import React from 'react';
 import { Nav } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 function Sidebar({ activePage }) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { currentUser } = useAuth();
   
-  const navItems = [
-  { id: 'questions', label: 'All Posts', path: '/incidents', icon: 'bi-list-ul' },
+  // Define all navigation items
+  const publicNavItems = [
+    { id: 'questions', label: 'All Posts', path: '/incidents', icon: 'bi-list-ul' },
     { id: 'submit', label: 'Submit Post', path: '/submit-incident', icon: 'bi-plus-circle' },
-    { id: 'mytickets', label: 'My Posts', path: '/my-queries', icon: 'bi-ticket' },
-    { id: 'settings', label: 'My Profile', path: '/profile', icon: 'bi-gear' },
   ];
+  
+  // Add authenticated-only items if user is logged in
+  const navItems = [...publicNavItems];
+  
+  // Only add these items if user is logged in
+  if (currentUser) {
+    navItems.push(
+      { id: 'mytickets', label: 'My Posts', path: '/my-queries', icon: 'bi-ticket' },
+      { id: 'settings', label: 'My Profile', path: '/profile', icon: 'bi-gear' }
+    );
+  }
 
   return (
     <div className="sticky-top pt-3" style={{ top: '70px' }}>
