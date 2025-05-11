@@ -25,6 +25,20 @@ exports.getAll = async (req, res) => {
           voter.toString() === req.user._id.toString() ||
           (voter.user && voter.user.toString() === req.user._id.toString())
         );
+        
+        // For polls, get which option the user voted for
+        if (incident.type === 'poll') {
+          const userVote = incident.voters.find(voter => {
+            if (typeof voter === 'object' && voter.user) {
+              return voter.user.toString() === req.user._id.toString();
+            }
+            return false;
+          });
+          
+          if (userVote && userVote.optionIndex !== undefined) {
+            incidentObj.userVotedOption = userVote.optionIndex;
+          }
+        }
       }
       
       // For polls, check if ended
@@ -136,13 +150,8 @@ exports.create = async (req, res) => {
     } else if (type === 'poll') {
       const { question, options, duration } = typeSpecificData;
       
-      // Format options as objects with text field
-      const formattedOptions = options.map(opt => {
-        if (typeof opt === 'string') {
-          return { text: opt, votes: 0 };
-        }
-        return { ...opt, votes: 0 };
-      });
+      // Example of formatting options
+      const formattedOptions = options.map(option => ({ text: option, votes: 0 }));
       
       Object.assign(incidentData, {
         question: question || title,
@@ -182,22 +191,14 @@ exports.create = async (req, res) => {
 // Upvote an incident
 exports.upvote = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
-    
     const incident = await Incident.findById(req.params.id);
-    
     if (!incident) {
       return res.status(404).json({
         success: false,
         message: 'Incident not found'
       });
     }
-    
+
     // Check if user has already voted
     if (incident.voters && incident.voters.some(voter => {
       if (typeof voter === 'object' && voter.user) {
@@ -210,17 +211,21 @@ exports.upvote = async (req, res) => {
         message: 'You have already voted on this incident'
       });
     }
-    
-    // Add user to voters and increment vote count
-    incident.voters.push(req.user._id);
-    incident.votes = (incident.votes || 0) + 1;
-    
-    await incident.save();
-    
+
+    // Only update votes and voters, skip options validation
+    const updatedIncident = await Incident.findByIdAndUpdate(
+      req.params.id,
+      {
+        $inc: { votes: 1 },
+        $push: { voters: req.user._id }
+      },
+      { new: true, runValidators: false }
+    );
+
     return res.json({
       success: true,
       data: {
-        votes: incident.votes,
+        votes: updatedIncident.votes,
         hasVoted: true
       }
     });
@@ -242,75 +247,53 @@ exports.vote = async (req, res) => {
         message: 'Authentication required'
       });
     }
-    
     const { optionIndex } = req.body;
-    
     if (optionIndex === undefined || optionIndex === null) {
       return res.status(400).json({
         success: false,
         message: 'Option index is required'
       });
     }
-    
     const incident = await Incident.findById(req.params.id);
-    
     if (!incident) {
       return res.status(404).json({
         success: false,
         message: 'Poll not found'
       });
     }
-    
     if (incident.type !== 'poll') {
       return res.status(400).json({
         success: false,
         message: 'This incident is not a poll'
       });
     }
-    
-    // Check if poll has ended
     if (isPollEnded(incident)) {
       return res.status(400).json({
         success: false,
         message: 'This poll has ended'
       });
     }
-    
-    // Check if option index is valid
     if (optionIndex < 0 || optionIndex >= incident.options.length) {
       return res.status(400).json({
         success: false,
         message: 'Invalid option index'
       });
     }
-    
-    // Check if user has already voted
-    if (incident.voters && incident.voters.some(voter => {
-      if (typeof voter === 'object' && voter.user) {
-        return voter.user.toString() === req.user._id.toString();
+    const previousVote = incident.voters.find(voter => voter.user.toString() === req.user._id.toString());
+    if (previousVote) {
+      incident.voters = incident.voters.filter(voter => voter.user.toString() !== req.user._id.toString());
+      if (incident.options[previousVote.optionIndex]) {
+        incident.options[previousVote.optionIndex].votes = Math.max(0, (incident.options[previousVote.optionIndex].votes || 0) - 1);
       }
-      return voter.toString() === req.user._id.toString();
-    })) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already voted on this poll'
-      });
     }
-    
-    // Store only the user ID in voters array to match schema expectations
-    incident.voters.push(req.user._id);
-    
-    // Increment vote count for the selected option while preserving the option structure
+    incident.voters.push({
+      user: req.user._id,
+      optionIndex: optionIndex
+    });
     if (incident.options[optionIndex]) {
-      // Make sure we preserve all existing properties of the option
-      incident.options[optionIndex] = {
-        ...incident.options[optionIndex].toObject(), // Convert to plain object to avoid Mongoose issues
-        votes: (incident.options[optionIndex].votes || 0) + 1
-      };
+      incident.options[optionIndex].votes = (incident.options[optionIndex].votes || 0) + 1;
     }
-    
     await incident.save();
-    
     return res.json({
       success: true,
       data: {
@@ -357,11 +340,12 @@ exports.getComments = async (req, res) => {
 
 exports.getUserIncidents = async (req, res) => {
   try {
-    // Use the 'user' field instead of 'userId' to match incidents with the user
+    console.log('Fetching incidents for user:', req.params.userId); // Add this line
     const incidents = await Incident.find({ user: req.params.userId })
       .populate('user', 'name email')
       .sort({ createdAt: -1 });
     
+    console.log('Found incidents:', incidents.length); // Add this line
     // Add hasVoted flag for the current user, similar to getAll method
     const enhancedIncidents = incidents.map(incident => {
       const incidentObj = incident.toObject();
@@ -518,5 +502,34 @@ exports.addReply = async (req, res) => {
       success: false,
       message: 'Server error'
     });
+  }
+};
+
+// Remove vote from a poll
+exports.removeVote = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+    const incident = await Incident.findById(req.params.id);
+    if (!incident || incident.type !== 'poll') {
+      return res.status(404).json({ success: false, message: 'Poll not found' });
+    }
+    // Find user's vote
+    const userVote = incident.voters.find(v => v.user.toString() === req.user._id.toString());
+    if (!userVote) {
+      return res.status(400).json({ success: false, message: 'You have not voted on this poll' });
+    }
+    // Decrement vote count for the option
+    if (incident.options[userVote.optionIndex]) {
+      incident.options[userVote.optionIndex].votes = Math.max(0, (incident.options[userVote.optionIndex].votes || 0) - 1);
+    }
+    // Remove user from voters
+    incident.voters = incident.voters.filter(v => v.user.toString() !== req.user._id.toString());
+    await incident.save();
+    return res.json({ success: true, data: { options: incident.options, hasVoted: false } });
+  } catch (err) {
+    console.error('Error removing vote:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };

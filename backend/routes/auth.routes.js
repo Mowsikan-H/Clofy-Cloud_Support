@@ -131,6 +131,7 @@ router.get('/me', protect, async (req, res) => {
         role: user.role,
         aiCredits: user.aiCredits,
         engineerTickets: user.engineerTickets,
+        avatar: user.avatar, // Add this line
         createdAt: user.createdAt
       }
     });
@@ -172,6 +173,27 @@ router.post('/upload-avatar', protect, upload.single('avatar'), async (req, res)
         website: user.website,
         createdAt: user.createdAt
       }
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Add this route after the /me route
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const { name, email, bio, company, location, website, avatar } = req.body;
+    
+    // Update user profile
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, email, bio, company, location, website, avatar },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: user
     });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

@@ -3,6 +3,7 @@ const router = express.Router();
 const Incident = require('../models/Incident');
 const Comment = require('../models/Comment');
 const { protect, authorize } = require('../middleware/auth');
+const incidentController = require('../controllers/incidentController');
 
 // Get all incidents
 router.get('/', async (req, res) => {
@@ -288,9 +289,25 @@ router.post('/:id/vote', protect, async (req, res) => {
       });
     }
     
-    // Here you would typically track who voted for what
-    // For simplicity, we're just incrementing a vote counter
-    incident.votes += 1;
+    // Check if user has already voted
+    const existingVoteIndex = incident.voters.findIndex(voter => 
+      voter.user.toString() === req.user.id.toString()
+    );
+    
+    if (existingVoteIndex !== -1) {
+      // Remove previous vote
+      const previousVote = incident.voters[existingVoteIndex];
+      incident.options[previousVote.optionIndex].votes -= 1;
+      incident.voters.splice(existingVoteIndex, 1);
+    }
+    
+    // Add new vote
+    incident.options[optionIndex].votes += 1;
+    incident.voters.push({
+      user: req.user.id,
+      optionIndex
+    });
+    
     await incident.save();
     
     res.status(200).json({
@@ -302,4 +319,62 @@ router.post('/:id/vote', protect, async (req, res) => {
   }
 });
 
+// Remove vote from a poll option
+router.delete('/:id/vote', protect, async (req, res) => {
+  try {
+    const incident = await Incident.findById(req.params.id);
+    
+    if (!incident) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Incident not found' 
+      });
+    }
+    
+    if (incident.type !== 'poll') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This incident is not a poll' 
+      });
+    }
+    
+    // Find the user's vote
+    const voterIndex = incident.voters.findIndex(voter => 
+      voter.user.toString() === req.user.id.toString()
+    );
+    
+    if (voterIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have not voted on this poll'
+      });
+    }
+    
+    const userVote = incident.voters[voterIndex];
+    
+    // Decrement the vote count for the option
+    incident.options[userVote.optionIndex].votes -= 1;
+    
+    // Remove the user's vote from voters array
+    incident.voters.splice(voterIndex, 1);
+    
+    await incident.save();
+    
+    res.status(200).json({
+      success: true,
+      data: incident
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+router.get('/user/:userId', protect, async (req, res) => {
+  try {
+  const incidents = await Incident.find({ user: req.params.userId });
+  res.status(200).json({ success: true, data: incidents });
+  } catch (err) {
+  res.status(400).json({ success: false, message: err.message });
+  }
+  });
+router.post('/', protect, incidentController.create);
 module.exports = router;

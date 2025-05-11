@@ -49,7 +49,7 @@ const handleApiError = (error) => {
 export const auth = {
   login: async (credentials) => {
     try {
-      const response = await axios.post('/api/auth/login', credentials);
+      const response = await axios.post('/auth/login', credentials);
       return response.data;
     } catch (error) {
       return handleApiError(error);
@@ -58,7 +58,7 @@ export const auth = {
   
   register: async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await axios.post('/auth/register', userData);
       return response.data;
     } catch (error) {
       return handleApiError(error);
@@ -143,6 +143,15 @@ export const incidents = {
     }
   },
   
+  removeVote: async (id) => {
+    try {
+      const response = await axios.delete(`/incidents/${id}/vote`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+  
   getUserIncidents: async (userId) => {
     try {
       // Remove the duplicate /api prefix since axios is already configured with a base URL
@@ -185,7 +194,7 @@ export const incidents = {
 export const users = {
   updateProfile: async (userData) => {
     try {
-      const response = await axios.put('/api/users/profile', userData);
+      const response = await axios.put('/api/auth/profile', userData);
       return response.data;
     } catch (error) {
       return handleApiError(error);
@@ -194,7 +203,7 @@ export const users = {
   
   uploadAvatar: async (formData) => {
     try {
-      const response = await axios.post('/auth/upload-avatar', formData, {
+      const response = await axios.post('/api/users/upload-avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

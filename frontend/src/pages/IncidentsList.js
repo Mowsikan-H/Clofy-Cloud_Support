@@ -42,7 +42,19 @@ function IncidentsList() {
         console.log('API response:', response);
         
         if (response && response.success) {
-          setIncidents(response.data || []);
+          // Process incidents to set selectedOption based on userVotedOption
+          const processedIncidents = response.data.map(incident => {
+            // If this is a poll and the user has voted, set the selectedOption
+            if (incident.type === 'poll' && incident.userVotedOption !== undefined) {
+              return {
+                ...incident,
+                selectedOption: incident.userVotedOption
+              };
+            }
+            return incident;
+          });
+          
+          setIncidents(processedIncidents || []);
         } else {
           console.error('API error:', response);
           setError((response && response.message) || 'Failed to fetch incidents');
@@ -138,15 +150,19 @@ function IncidentsList() {
   
   // Handle submitting a new comment
   const handleSubmitComment = async () => {
-    if (!commentText.trim() || !currentIncident) return;
+    if (!commentText.trim() || !currentIncident || !currentUser) {
+      alert('Please log in to comment');
+      return;
+    }
     
     try {
-      const response = await api.incidents.addComment(currentIncident._id, { text: commentText });
+      const response = await api.incidents.addComment(currentIncident._id, { 
+        text: commentText 
+      });
       
       if (response && response.success) {
-        // Add the new comment to the list
         setComments([...comments, response.data]);
-        setCommentText(''); // Clear the input
+        setCommentText('');
       } else {
         console.error('Failed to add comment');
       }
@@ -230,24 +246,27 @@ function IncidentsList() {
   };
   
   // Handle submitting a poll vote
-  const handleSubmitVote = async () => {
-    if (selectedOption === null || !currentIncident) return;
-    
-    setVotingLoading(true);
+  // Handle removing a poll vote
+  const handleRemoveVote = async (incidentId) => {
+    if (!currentUser) return;
     
     try {
-      const response = await api.incidents.vote(currentIncident._id, { optionIndex: selectedOption });
+      const response = await api.incidents.removeVote(incidentId);
       
       if (response && response.success) {
-        // Update the incidents list with the new vote count
+        // Update the incidents list to reflect the removed vote
         const updatedIncidents = incidents.map(incident => {
-          if (incident._id === currentIncident._id) {
-            // Create a deep copy of options to update vote count
+          if (incident._id === incidentId) {
+            // Get the previously selected option
+            const prevOptionIndex = incident.selectedOption;
+            
+            // Create a deep copy of options to update vote counts
             const updatedOptions = incident.options.map((option, index) => {
-              if (index === selectedOption) {
+              if (index === prevOptionIndex) {
+                // Decrement vote for previously selected option
                 return {
                   ...option,
-                  votes: (option.votes || 0) + 1
+                  votes: Math.max(0, (option.votes || 0) - 1)
                 };
               }
               return option;
@@ -256,24 +275,61 @@ function IncidentsList() {
             return {
               ...incident,
               options: updatedOptions,
-              hasVoted: true
+              selectedOption: undefined,
+              userVotedOption: undefined  // Clear userVotedOption when removing vote
             };
           }
           return incident;
         });
         
         setIncidents(updatedIncidents);
-        setShowPollModal(false);
       } else {
-        // Add proper error handling
-        console.error('Error voting:', response?.message || 'Unknown error');
-        alert(response?.message || 'Failed to submit your vote. Please try again.');
+        console.error('Error removing vote:', response?.message || 'Unknown error');
       }
     } catch (err) {
-      console.error('Error voting:', err);
-      alert('Something went wrong while submitting your vote. Please try again later.');
-    } finally {
-      setVotingLoading(false);
+      console.error('Error removing vote:', err);
+    }
+  };
+  
+  const handleSubmitVote = async (incidentId, optionIndex) => {
+    if (!currentUser) return;
+    try {
+      const response = await api.incidents.vote(incidentId, { optionIndex });
+      if (response && response.success) {
+        const updatedIncidents = incidents.map(incident => {
+          if (incident._id === incidentId) {
+            const prevOptionIndex = incident.selectedOption;
+            const updatedOptions = incident.options.map((option, index) => {
+              let votes = option.votes || 0;
+              // Remove vote from previous option
+              if (prevOptionIndex !== undefined && index === prevOptionIndex) {
+                votes = Math.max(0, votes - 1);
+              }
+              // Add vote to newly selected option
+              if (index === optionIndex) {
+                votes += 1;
+              }
+              return {
+                ...option,
+                votes
+              };
+            });
+            return {
+              ...incident,
+              options: updatedOptions,
+              selectedOption: optionIndex,
+              userVotedOption: optionIndex // update this so UI reflects immediately
+            };
+          }
+          return incident;
+        });
+        setIncidents(updatedIncidents);
+        setShowPollModal(false);
+      } else {
+        console.error('Voting failed:', response?.message || 'Unknown error');
+      }
+    } catch (err) {
+      console.error('Error submitting vote:', err);
     }
   };
   
@@ -297,15 +353,7 @@ function IncidentsList() {
     // Interactive elements for all card types
     const interactiveElements = (
       <div className="d-flex mt-3 pt-2 border-top">
-        <Button 
-          variant="link" 
-          className="text-muted p-0 me-3 d-flex align-items-center"
-          onClick={(e) => handleUpvote(incident._id, e)}
-          disabled={incident.hasVoted}
-        >
-          <i className={`bi bi-hand-thumbs-up${incident.hasVoted ? '-fill' : ''} me-1`}></i>
-          <span>{typeof incident.votes === 'object' ? JSON.stringify(incident.votes) : incident.votes || 0} Upvotes</span>
-        </Button>
+       
         
         <Button 
           variant="link" 
@@ -495,9 +543,7 @@ function IncidentsList() {
           );
           
         case 'poll':
-          // Calculate total votes for percentage
           const totalVotes = incident.options?.reduce((sum, option) => sum + (option.votes || 0), 0) || 0;
-          
           return (
             <Card key={incident._id} className="shadow-sm hover-border-primary border-start border-info border-3">
               <Card.Body className="p-3">
@@ -509,24 +555,34 @@ function IncidentsList() {
                 </div>
                 
                 <div className="mt-3 mb-2">
-                  {incident.options?.slice(0, 3).map((option, index) => (
+                  {incident.options?.map((option, index) => (
                     <div key={index} className="mb-2">
-                      <div className="d-flex justify-content-between small mb-1">
-                        <span>{typeof option === 'object' ? option.text : String(option)}</span>
-                        <span>{typeof option === 'object' ? option.votes || 0 : 0} votes</span>
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <Form.Check
+                          type="radio"
+                          name={`poll-${incident._id}`}
+                          id={`poll-${incident._id}-${index}`}
+                          checked={incident.userVotedOption === index}
+                          onChange={() => handleSubmitVote(incident._id, index)}
+                          disabled={incident.hasEnded}
+                        />
+                        <label htmlFor={`poll-${incident._id}-${index}`} className="flex-grow-1 small mb-0">
+                          {typeof option === 'object' ? option.text : String(option)}
+                          <span className="text-muted ms-2">({typeof option === 'object' ? option.votes || 0 : 0} votes)</span>
+                          {incident.userVotedOption === index && (
+                            <span className="ms-2 text-success fw-semibold">You have voted for this option</span>
+                          )}
+                        </label>
                       </div>
-                      <ProgressBar 
-                        now={totalVotes ? ((typeof option === 'object' ? option.votes || 0 : 0) / totalVotes) * 100 : 0} 
-                        variant="info" 
-                        style={{height: '8px'}}
-                      />
+                      {incident.userVotedOption !== undefined && (
+                        <ProgressBar
+                          now={totalVotes ? ((typeof option === 'object' ? option.votes || 0 : 0) / totalVotes) * 100 : 0}
+                          variant="info"
+                          style={{height: '8px'}}
+                        />
+                      )}
                     </div>
                   ))}
-                  {incident.options?.length > 3 && (
-                    <div className="text-center small text-muted mt-2">
-                      +{incident.options.length - 3} more options
-                    </div>
-                  )}
                 </div>
                 
                 <div className="d-flex justify-content-between align-items-center small text-muted mt-3">
@@ -534,29 +590,20 @@ function IncidentsList() {
                   <span>Ends: {incident.endDate ? new Date(incident.endDate).toLocaleDateString() : 'N/A'}</span>
                 </div>
                 
+                {incident.selectedOption !== undefined && (
+                  <div className="mt-2">
+                    <Button 
+                      variant="outline-danger" 
+                      size="sm"
+                      onClick={() => handleRemoveVote(incident._id)}
+                    >
+                      <i className="bi bi-x-circle me-1"></i> Remove Vote
+                    </Button>
+                  </div>
+                )}
                 {commonElements}
                 {userInfo}
-                
-                <div className="d-flex mt-3 pt-2 border-top">
-                  <Button 
-                    variant="link" 
-                    className="text-muted p-0 me-3 d-flex align-items-center"
-                    onClick={() => handleOpenComments(incident)}
-                  >
-                    <i className="bi bi-chat-left-text me-1"></i>
-                    <span>{incident.comments?.length || 0} Comments</span>
-                  </Button>
-                  
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    className="ms-auto"
-                    onClick={() => handleOpenPollVoting(incident)}
-                    disabled={incident.hasVoted}
-                  >
-                    {incident.hasVoted ? 'You voted' : 'Vote Now'}
-                  </Button>
-                </div>
+                {interactiveElements}
                 {commentsSection}
               </Card.Body>
             </Card>
@@ -635,9 +682,7 @@ function IncidentsList() {
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="fs-4 fw-semibold mb-0">All Posts</h2>
                 <div className="d-flex gap-2">
-                  <Button variant="light" size="sm">Newest</Button>
-                  <Button variant="light" size="sm">Active</Button>
-                  <Button variant="light" size="sm">Unanswered</Button>
+                  <Link to="/submit-incident" className="btn btn-primary">Submit Post</Link>
                 </div>
               </div>
               
@@ -738,7 +783,11 @@ function IncidentsList() {
               <div className="text-center py-5">
                 <p className="text-muted">No posts found. Be the first to submit a post!</p>
                 <Button as={Link} to="/submit-incident" variant="primary" className="mt-3">
-                  Submit Post
+                 
+                    <div className="d-flex gap-2">
+                      <Link to="/submit-incident" className="btn btn-primary">Submit Post</Link>
+                    </div>
+                 
                 </Button>
               </div>
             ) : (

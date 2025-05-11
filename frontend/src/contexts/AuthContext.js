@@ -97,12 +97,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
     setCurrentUser(null);
   }
-
+  function updateUserProfile(updatedUser) {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+}
   const value = {
     currentUser,
     login,
     register,
     logout,
+    updateUserProfile,
   };
 
   return (

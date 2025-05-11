@@ -99,9 +99,15 @@ const IncidentSchema = new Schema({
   },
   endDate: Date,
   voters: [{
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    optionIndex: Number
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    optionIndex: {
+      type: Number,
+      required: true
+    }
   }],
   
   // Fields for news type

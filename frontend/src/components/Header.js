@@ -69,7 +69,6 @@ function Header() {
                   </Dropdown.Toggle>
                   <Dropdown.Menu>
                     <Dropdown.Item as={Link} to="/profile">Profile</Dropdown.Item>
-                    <Dropdown.Item as={Link} to="/account-billing">Account & Billing</Dropdown.Item>
                     <Dropdown.Divider />
                     <Dropdown.Item onClick={handleLogout}>Sign Out</Dropdown.Item>
                   </Dropdown.Menu>

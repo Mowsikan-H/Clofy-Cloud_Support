@@ -25,57 +25,24 @@ function MyQueries() {
   
   useEffect(() => {
     // Only fetch user incidents if the user is logged in
-    if (currentUser) {
+    if (currentUser._id || currentUser.id) { // Ensure currentUser and id are defined
       const fetchUserIncidents = async () => {
         try {
           setLoading(true);
-          console.log('Fetching user incidents...');
-          
-          // Check if api.incidents exists
-          if (!api || !api.incidents || !api.incidents.getAll) {
-            console.error('API service not properly configured:', api);
-            throw new Error('API service not properly configured');
-          }
-          
-          // Check if the getUserIncidents method exists, otherwise fall back to getAll with filtering
-          if (api.incidents.getUserIncidents) {
-            // Use dedicated endpoint to fetch only user's incidents
-            const response = await api.incidents.getUserIncidents(currentUser?.id);
-            console.log('API response:', response);
-            
-            if (response && response.success) {
-              setIncidents(response.data || []);
-            } else {
-              console.error('API error:', response);
-              setError((response && response.message) || 'Failed to fetch incidents');
-            }
+          const response = await api.incidents.getUserIncidents(currentUser._id || currentUser.id);
+          if (response && response.success) {
+            setIncidents(response.data || []);
           } else {
-            // Fallback to the current approach if getUserIncidents is not available
-            const response = await api.incidents.getAll();
-            console.log('API response:', response);
-            
-            if (response && response.success) {
-              // Filter incidents to only show those created by the current user
-              const userIncidents = response.data.filter(incident => 
-                incident.userId === currentUser?.id || incident.createdBy === currentUser?.id
-              );
-              setIncidents(userIncidents || []);
-            } else {
-              console.error('API error:', response);
-              setError((response && response.message) || 'Failed to fetch incidents');
-            }
+            setError((response && response.message) || 'Failed to fetch incidents');
           }
         } catch (err) {
-          console.error('Error fetching user incidents:', err);
           setError(err.message || 'An error occurred while connecting to the server');
         } finally {
           setLoading(false);
         }
       };
-      
       fetchUserIncidents();
     } else {
-      // If user is not logged in, set loading to false
       setLoading(false);
     }
   }, [currentUser]);

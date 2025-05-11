@@ -8,6 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
 function UserProfile() {
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [activeTab, setActiveTab] = useState('activity');
   const { currentUser, logout, updateUserProfile } = useAuth();
   const [userPosts, setUserPosts] = useState([]);
@@ -31,6 +33,13 @@ function UserProfile() {
     avatar: ''
   });
   
+  const avatars = [
+    'OIP (1).jpeg', 'OIP (2).jpeg', 'OIP (3).jpeg', 'OIP (4).jpeg',
+    'OIP (5).jpeg', 'OIP (6).jpeg', 'OIP (7).jpeg', 'OIP (8).jpeg',
+    'OIP (9).jpeg', 'OIP (10).jpeg', 'OIP (11).jpeg', 'OIP (12).jpeg',
+    'OIP (13).jpeg', 'OIP (14).jpeg', 'OIP (15).jpeg', 'OIP (16).jpeg',
+    'OIP (27).jpeg', 'OIP.jpeg'
+  ];
   // Password change state
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -68,8 +77,8 @@ function UserProfile() {
     
     try {
       setLoading(true);
-      // Use the API service to fetch user posts
-      const response = await api.incidents.getUserIncidents(currentUser.id);
+      // Use the API service to fetch user posts with the correct user ID
+      const response = await api.incidents.getUserIncidents(currentUser._id || currentUser.id);
       
       if (response && response.success) {
         setUserPosts(response.data || []);
@@ -83,6 +92,18 @@ function UserProfile() {
     }
   };
   
+    // Handle avatar selection
+    const handleAvatarSelect = (avatar) => {
+      setSelectedAvatar(avatar);
+      setFormData(prev => ({
+        ...prev,
+        avatar: `/Avatars/${avatar}`
+      }));
+      
+      setAvatarPreview(`/Avatars/${avatar}`);
+      setShowAvatarModal(false);
+    };
+
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -107,22 +128,38 @@ function UserProfile() {
     setError(null);
     setSuccess(null);
     
+    // Add validation
+    if (!formData.avatar) {
+      setError('Please select an avatar');
+      return;
+    }
+  
     try {
       setLoading(true);
-      // Call the API to update user profile
-      const response = await api.users.updateProfile(formData);
+      const updateData = {
+        ...formData,
+        avatar: selectedAvatar ? `/Avatars/${selectedAvatar}` : formData.avatar
+      };
       
-      if (response && response.success) {
+      const response = await api.users.updateProfile(updateData);
+      
+      if (response?.success) {
         setSuccess('Profile updated successfully');
-        // Update the current user in context
         if (updateUserProfile) {
           updateUserProfile(response.data);
+          setFormData(prev => ({
+            ...prev,
+            avatar: response.data.avatar
+          }));
         }
+        setSelectedAvatar(null);
+        setAvatarPreview(null);
       } else {
         setError(response?.message || 'Failed to update profile');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while updating profile');
+      console.error('Profile update error:', err);
+      setError(err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -166,52 +203,61 @@ function UserProfile() {
     }
   };
   
-// Handle file input change
-const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setAvatarFile(file);
-    
-    // Create a preview URL
-    const previewUrl = URL.createObjectURL(file);
-    setAvatarPreview(previewUrl);
-  }
-};
-
-// Handle avatar upload
-const handleAvatarUpload = async () => {
-  if (!avatarFile) return;
-  
-  setError(null);
-  setSuccess(null);
-  
-  try {
-    setLoading(true);
-    
-    const formData = new FormData();
-    formData.append('avatar', avatarFile);
-    
-    // Call the API to upload avatar
-    const response = await api.users.uploadAvatar(formData);
-    
-    if (response && response.success) {
-      setSuccess('Profile picture updated successfully');
-      // Update the current user in context
-      if (updateUserProfile) {
-        updateUserProfile(response.data);
-      }
-      // Clear the file input
-      setAvatarFile(null);
-      setAvatarPreview(null);
-    } else {
-      setError(response?.message || 'Failed to upload profile picture');
+  // Handle file input change
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvatarFile(file);
+      
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
     }
-  } catch (err) {
-    setError(err.message || 'An error occurred while uploading profile picture');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+  
+  // Handle avatar upload
+  const handleAvatarUpload = async () => {
+    if (!avatarFile) return;
+    
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      setLoading(true);
+      
+      const formData = new FormData();
+      formData.append('avatar', avatarFile);
+      
+      // Call the API to upload avatar
+      const response = await api.users.uploadAvatar(formData);
+      
+      if (response && response.success) {
+        setSuccess('Profile picture updated successfully');
+        // Update the current user in context
+        if (updateUserProfile && response.data) {
+          console.log('Updating user profile with new avatar:', response.data.avatar);
+          updateUserProfile(response.data);
+          
+          // Also update the local form data
+          setFormData(prev => ({
+            ...prev,
+            avatar: response.data.avatar
+          }));
+        }
+        // Clear the file input
+        setAvatarFile(null);
+        setAvatarPreview(null);
+      } else {
+        setError(response?.message || 'Failed to upload profile picture');
+      }
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      setError(err.message || 'An error occurred while uploading profile picture');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Handle account deletion
   const handleDeleteAccount = async () => {
     if (deleteConfirmation !== currentUser?.email) {
@@ -250,7 +296,82 @@ const handleAvatarUpload = async () => {
           <Col lg={2} className="d-none d-lg-block">
             <Sidebar activePage="profile" />
           </Col>
-          
+           {/* Avatar Selection Modal */}
+      <Modal show={showAvatarModal} onHide={() => setShowAvatarModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Select Avatar</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedAvatar && (
+            <div className="text-center mb-3">
+              <Image 
+                src={`/Avatars/${selectedAvatar}`} 
+                alt="Selected Avatar" 
+                roundedCircle 
+                width={100} 
+                height={100} 
+                className="mb-2"
+              />
+              <p>Preview of selected avatar</p>
+            </div>
+          )}
+          <div className="d-flex flex-wrap gap-3">
+            {avatars.map((avatar, index) => (
+              <Image
+                key={index}
+                src={`/Avatars/${avatar}`}
+                alt={`Avatar ${index + 1}`}
+                roundedCircle
+                width={60}
+                height={60}
+                className="cursor-pointer"
+                onClick={() => setSelectedAvatar(avatar)}
+              />
+            ))}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAvatarModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={async () => {
+              try {
+                setLoading(true);
+                const updateData = {
+                  ...formData,
+                  avatar: `/Avatars/${selectedAvatar}`
+                };
+                
+                const response = await api.users.updateProfile(updateData);
+                
+                if (response?.success) {
+                  setSuccess('Avatar updated successfully');
+                  if (updateUserProfile) {
+                    updateUserProfile(response.data);
+                    setFormData(prev => ({
+                      ...prev,
+                      avatar: response.data.avatar
+                    }));
+                  }
+                  setShowAvatarModal(false);
+                } else {
+                  setError(response?.message || 'Failed to update avatar');
+                }
+              } catch (err) {
+                console.error('Avatar update error:', err);
+                setError(err.message || 'Failed to update avatar');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={!selectedAvatar || loading}
+          >
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
           {/* Main Content */}
           <Col lg={7} md={8}>
             {!currentUser ? (
@@ -271,14 +392,20 @@ const handleAvatarUpload = async () => {
                 {/* Profile Header */}
                 <Card className="shadow-sm mb-4">
                   <Card.Body className="p-4 d-flex align-items-center">
-                    <Image 
-                      src={avatarPreview || currentUser.avatar || "https://via.placeholder.com/80"} 
-                      alt="Avatar" 
-                      roundedCircle 
-                      width={80} 
-                      height={80} 
-                      className="me-4"
-                    />
+                  <Image 
+                    src={currentUser.avatar || "/Avatars/default.png"}
+                    alt="Avatar"
+                    onError={(e) => {
+                      e.target.src = "/Avatars/default.png";
+                    }}
+                  />
+<Button 
+  variant="outline-secondary" 
+  size="sm" 
+  onClick={() => setShowAvatarModal(true)}
+>
+  Change Avatar
+</Button>
                     <div>
                       <h1 className="fs-3 fw-semibold mb-1">{currentUser.name || 'User'}</h1>
                       <div className="d-flex flex-wrap gap-3 mt-2">
@@ -333,8 +460,27 @@ const handleAvatarUpload = async () => {
                       >
                         Questions
                       </Nav.Link>
-                     
-                    
+                      <Nav.Link 
+                        as="button" 
+                        className={`border-0 bg-transparent ${activeTab === 'issues' ? 'text-primary fw-medium' : 'text-muted'}`}
+                        onClick={() => setActiveTab('issues')}
+                      >
+                        Issues
+                      </Nav.Link>
+                      <Nav.Link 
+                        as="button" 
+                        className={`border-0 bg-transparent ${activeTab === 'polls' ? 'text-primary fw-medium' : 'text-muted'}`}
+                        onClick={() => setActiveTab('polls')}
+                      >
+                        Polls
+                      </Nav.Link>
+                      <Nav.Link 
+                        as="button" 
+                        className={`border-0 bg-transparent ${activeTab === 'news' ? 'text-primary fw-medium' : 'text-muted'}`}
+                        onClick={() => setActiveTab('news')}
+                      >
+                        News
+                      </Nav.Link>
                       <Nav.Link 
                         as="button" 
                         className={`border-0 bg-transparent ${activeTab === 'settings' ? 'text-primary fw-medium' : 'text-muted'}`}
@@ -424,6 +570,147 @@ const handleAvatarUpload = async () => {
                   </Card>
                 )}
 
+                {/* Issues Section */}
+                {activeTab === 'issues' && (
+                  <Card className="shadow-sm mb-4">
+                    <Card.Body className="p-4">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h2 className="fs-5 fw-semibold mb-0">My Issues</h2>
+                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                          Report an Issue
+                        </Button>
+                      </div>
+                      {loading ? (
+                        <div className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : userPosts.filter(post => post.type === 'issue').length > 0 ? (
+                        <ul className="list-unstyled">
+                          {userPosts.filter(post => post.type === 'issue').map((post, index) => (
+                            <li key={index} className="border-bottom pb-3 mb-3">
+                              <Link to={`/incident/${post._id}`} className="text-primary fw-medium">
+                                {post.title}
+                              </Link>
+                              <p className="text-muted small mt-1 mb-1">
+                                {post.description ? post.description.substring(0, 100) + '...' : 'No description'}
+                              </p>
+                              <div className="d-flex justify-content-between align-items-center small">
+                                <span className="text-muted">{new Date(post.createdAt).toLocaleString()}</span>
+                                <span>
+                                  <i className="bi bi-chat-left-text me-1"></i> {post.comments?.length || 0} Comments
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-center py-3">
+                          <p className="text-muted mb-3">You haven't reported any issues yet.</p>
+                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                            Report Your First Issue
+                          </Button>
+                        </div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                )}
+
+                {/* Polls Section */}
+                {activeTab === 'polls' && (
+                  <Card className="shadow-sm mb-4">
+                    <Card.Body className="p-4">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h2 className="fs-5 fw-semibold mb-0">My Polls</h2>
+                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                          Create a Poll
+                        </Button>
+                      </div>
+                      {loading ? (
+                        <div className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : userPosts.filter(post => post.type === 'poll').length > 0 ? (
+                        <ul className="list-unstyled">
+                          {userPosts.filter(post => post.type === 'poll').map((post, index) => (
+                            <li key={index} className="border-bottom pb-3 mb-3">
+                              <Link to={`/incident/${post._id}`} className="text-primary fw-medium">
+                                {post.title || post.question}
+                              </Link>
+                              <p className="text-muted small mt-1 mb-1">
+                                {post.description ? post.description.substring(0, 100) + '...' : 'No description'}
+                              </p>
+                              <div className="d-flex justify-content-between align-items-center small">
+                                <span className="text-muted">{new Date(post.createdAt).toLocaleString()}</span>
+                                <span>
+                                  <i className="bi bi-bar-chart-fill me-1"></i> {post.options?.reduce((sum, option) => sum + (option.votes || 0), 0) || 0} Votes
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-center py-3">
+                          <p className="text-muted mb-3">You haven't created any polls yet.</p>
+                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                            Create Your First Poll
+                          </Button>
+                        </div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                )}
+
+                {/* News Section */}
+                {activeTab === 'news' && (
+                  <Card className="shadow-sm mb-4">
+                    <Card.Body className="p-4">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h2 className="fs-5 fw-semibold mb-0">My News</h2>
+                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                          Post News
+                        </Button>
+                      </div>
+                      {loading ? (
+                        <div className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : userPosts.filter(post => post.type === 'news').length > 0 ? (
+                        <ul className="list-unstyled">
+                          {userPosts.filter(post => post.type === 'news').map((post, index) => (
+                            <li key={index} className="border-bottom pb-3 mb-3">
+                              <Link to={`/incident/${post._id}`} className="text-primary fw-medium">
+                                {post.title}
+                              </Link>
+                              <p className="text-muted small mt-1 mb-1">
+                                {post.description ? post.description.substring(0, 100) + '...' : 'No description'}
+                              </p>
+                              <div className="d-flex justify-content-between align-items-center small">
+                                <span className="text-muted">{new Date(post.createdAt).toLocaleString()}</span>
+                                <span>
+                                  <i className="bi bi-chat-left-text me-1"></i> {post.comments?.length || 0} Comments
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-center py-3">
+                          <p className="text-muted mb-3">You haven't posted any news yet.</p>
+                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                            Post Your First News
+                          </Button>
+                        </div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                )}
+
                 {/* Badges Section */}
                 {activeTab === 'badges' && (
                   <Card className="shadow-sm mb-4">
@@ -505,66 +792,7 @@ const handleAvatarUpload = async () => {
                               placeholder="Tell us about yourself"
                             />
                           </Form.Group>
-                          
-                          <Row>
-                            <Col md={6} className="mb-3">
-                              <Form.Group controlId="company">
-                                <Form.Label>Company</Form.Label>
-                                <Form.Control 
-                                  type="text" 
-                                  name="company" 
-                                  value={formData.company} 
-                                  onChange={handleInputChange} 
-                                />
-                              </Form.Group>
-                            </Col>
-                            <Col md={6} className="mb-3">
-                              <Form.Group controlId="location">
-                                <Form.Label>Location</Form.Label>
-                                <Form.Control 
-                                  type="text" 
-                                  name="location" 
-                                  value={formData.location} 
-                                  onChange={handleInputChange} 
-                                />
-                              </Form.Group>
-                            </Col>
-                          </Row>
-                          
-                          <Form.Group className="mb-3" controlId="website">
-                            <Form.Label>Website</Form.Label>
-                            <Form.Control 
-                              type="url" 
-                              name="website" 
-                              value={formData.website} 
-                              onChange={handleInputChange} 
-                              placeholder="https://example.com"
-                            />
-                          </Form.Group>
-                          
-                          <Form.Group className="mb-3" controlId="avatar">
-                            <Form.Label>Profile Picture URL</Form.Label>
-                            <div className="d-flex">
-                              <Form.Control 
-                                type="url" 
-                                name="avatar" 
-                                value={formData.avatar} 
-                                onChange={handleInputChange} 
-                                placeholder="https://example.com/avatar.jpg"
-                                className="me-2"
-                              />
-                              <Button 
-                                variant="outline-primary" 
-                                onClick={() => document.getElementById('avatar-upload').click()}
-                                type="button"
-                              >
-                                Browse...
-                              </Button>
-                            </div>
-                            <Form.Text className="text-muted">
-                              Enter a URL or upload an image file from your device.
-                            </Form.Text>
-                          </Form.Group>
+                        
                           
                           {/* Hidden file input */}
                           <input

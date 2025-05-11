@@ -18,6 +18,8 @@ router.post('/:id/upvote', protect, incidentController.upvote);
 // Vote on a poll
 router.post('/:id/vote', protect, incidentController.vote);
 
+router.delete('/:id/vote', protect, incidentController.removeVote);
+
 // Get comments for an incident
 router.get('/:id/comments', incidentController.getComments);
 
