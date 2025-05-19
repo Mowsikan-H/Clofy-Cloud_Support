@@ -6,6 +6,7 @@ const path = require('path'); // Add this line
 const authRoutes = require('./routes/auth.routes');
 const incidentRoutes = require('./routes/incidentRoutes');
 const knowledgeBaseRoutes = require('./routes/knowledgeBase.routes');
+const userRoutes = require('./routes/userRoutes'); // Adjust path if needed
 
 // Load environment variables
 dotenv.config();
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/incidents', incidentRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
+app.use('/api/users', userRoutes); // Mount the user routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

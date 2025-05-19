@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge, ProgressBar, Modal, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Badge, ProgressBar, Modal, InputGroup, Image } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -8,7 +8,7 @@ import { api } from '../services/api';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-function IncidentsList() {
+function PostsList() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,6 +25,20 @@ function IncidentsList() {
   const [selectedOption, setSelectedOption] = useState(null);
   const [votingLoading, setVotingLoading] = useState(false);
   const { currentUser } = useAuth();
+
+  useEffect(() => {
+    // Check if user is logged in
+    const user = localStorage.getItem('user');
+    if (!user) {
+      console.log('No user found in localStorage');
+      // Optionally redirect to login page
+      // window.location.href = '/login';
+      return;
+    }
+
+    // Log user data for debugging
+    console.log('Current user from localStorage:', JSON.parse(user));
+  }, []);
   
   useEffect(() => {
     const fetchIncidents = async () => {
@@ -133,8 +147,9 @@ function IncidentsList() {
       setCurrentIncident(incident);
       
       const response = await api.incidents.getComments(incidentId);
-      if (response && response.success) {
-        setComments(response.data || []);
+if (response && response.success) {
+  console.log('Comment data received:', response.data); // Add this line
+  setComments(response.data || []);
         // Now expand ONLY this comment section
         newExpandedState[incidentId] = true;
         setExpandedComments(newExpandedState);
@@ -148,10 +163,111 @@ function IncidentsList() {
     }
   };
   
+  const handleDeleteReply = async (commentId, replyId, e) => {
+    e.preventDefault(); // Prevent default link behavior
+
+    // Find the comment and reply to check ownership
+    const comment = comments.find(c => c._id === commentId);
+    const reply = comment?.replies?.find(r => r._id === replyId);
+    
+    // Allow deletion if user is admin OR the reply owner
+    if (!currentUser || (String(currentUser.id) !== String(reply?.user?._id) && currentUser.role !== 'admin')) {
+      alert('You are not authorized to perform this action.');
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this reply?')) {
+      try {
+        console.log(`Attempting to delete reply with ID: ${replyId} for comment ${commentId} on incident ${currentIncident._id}`);
+        const response = await api.incidents.deleteReply(currentIncident._id, commentId, replyId);
+
+        if (response && response.success) {
+          // Update the comments state to remove the deleted reply
+          setComments(comments.map(comment => {
+            if (comment._id === commentId) {
+              return {
+                ...comment,
+                replies: comment.replies.filter(reply => reply._id !== replyId)
+              };
+            }
+            return comment;
+          }));
+          alert('Reply deleted successfully.');
+        } else {
+          console.error('Failed to delete reply:', response);
+          alert(response?.message || 'Failed to delete reply.');
+        }
+      } catch (err) {
+        console.error('Error deleting reply:', err);
+        alert(err.message || 'An error occurred while deleting the reply.');
+      }
+    }
+  };
+
+  const handleDeleteIncident = async (incidentId, e) => {
+    e.preventDefault(); // Prevent navigation
+    
+    if (!currentUser || currentUser.role !== 'admin') {
+      alert('You are not authorized to perform this action.');
+      return;
+    }
+    
+    if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      try {
+        // Assuming you have an api.incidents.delete function
+        // You will need to implement this function in your api service file
+        const response = await api.incidents.deleteIncident(incidentId); 
+        
+        if (response && response.success) {
+          // Remove the deleted incident from the state
+          setIncidents(incidents.filter(incident => incident._id !== incidentId));
+        } else {
+          console.error('Failed to delete incident:', response);
+          alert(response?.message || 'Failed to delete post.');
+        }
+      } catch (err) {
+        console.error('Error deleting incident:', err);
+        alert(err.message || 'An error occurred while deleting the post.');
+      }
+    }
+  };
+
+  const handleDeleteComment = async (commentId, e) => {
+    e.preventDefault(); // Prevent default link behavior
+
+    // Find the comment to check ownership
+    const comment = comments.find(c => c._id === commentId);
+    
+    // Allow deletion if user is admin OR the comment owner
+    if (!currentUser || (String(currentUser.id) !== String(comment?.user?._id) && currentUser.role !== 'admin')) {
+      alert('You are not authorized to perform this action.');
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this comment?')) {
+      try {
+        console.log(`Attempting to delete comment with ID: ${commentId} for incident ${currentIncident._id}`);
+        const response = await api.incidents.deleteComment(currentIncident._id, commentId);
+
+        if (response && response.success) {
+          // Remove the deleted comment from the state
+          setComments(comments.filter(comment => comment._id !== commentId));
+          alert('Comment deleted successfully.');
+        } else {
+          console.error('Failed to delete comment:', response);
+          alert(response?.message || 'Failed to delete comment.');
+        }
+      } catch (err) {
+        console.error('Error deleting comment:', err);
+        alert(err.message || 'An error occurred while deleting the comment.');
+      }
+    }
+  };
+  
   // Handle submitting a new comment
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !currentIncident || !currentUser) {
-      alert('Please log in to comment');
+      alert('Please enter comment');
       return;
     }
     
@@ -352,9 +468,19 @@ function IncidentsList() {
     
     // Interactive elements for all card types
     const interactiveElements = (
-      <div className="d-flex mt-3 pt-2 border-top">
-       
-        
+      <div className="d-flex justify-content-between align-items-center mt-3">
+  {/* Delete Button (Admin Only) */}
+        {currentUser?.role === 'admin' && (
+          <Button
+            variant="link"
+            className="text-danger p-0 small"
+            onClick={(e) => handleDeleteIncident(incident._id, e)}
+            title="Delete Post"
+          >
+            <i className="bi bi-trash"></i> Delete
+          </Button>
+        )}
+
         <Button 
           variant="link" 
           className="text-muted p-0 me-3 d-flex align-items-center"
@@ -399,43 +525,75 @@ function IncidentsList() {
                     </div>
                   </div>
                   <div className="ms-2 flex-grow-1">
-                    <div className="d-flex justify-content-between">
-                      <h6 className="mb-0 small">{comment.user?.name || 'Anonymous'}</h6>
-                      <small className="text-muted">{new Date(comment.createdAt).toLocaleString()}</small>
+                    <div className="d-flex justify-content-between align-items-center"> {/* Added align-items-center */}
+                      <div> {/* Wrap name and date in a div */}
+                        <h6 className="mb-0 small">{comment.user?.name || 'Anonymous'}</h6>
+                        <small className="text-muted">{new Date(comment.createdAt).toLocaleString()}</small>
+                      </div>
+                      {/* Delete Button for Comments (Admin or Owner) */}
+                      {(() => {
+  console.log('Delete button check - Current User:', currentUser);
+  console.log('Delete button check - Comment User:', comment.user);
+  return (currentUser?.role === 'admin' || String(currentUser?.id) === String(comment.user?._id)) && (
+    <Button
+      variant="link"
+      className="text-danger p-0 small ms-2"
+      onClick={(e) => handleDeleteComment(comment._id, e)}
+      title="Delete Comment"
+    >
+      <i className="bi bi-trash"></i>
+    </Button>
+  );
+})()}
                     </div>
                     <p className="mb-1 small">{comment.text}</p>
-                    <Button 
-                      variant="link" 
+                    <Button
+                      variant="link"
                       className="p-0 text-muted small"
                       onClick={() => handleReply(comment._id)}
                     >
                       Reply
                     </Button>
-                    
+
                     {/* Replies */}
-                    {comment.replies && comment.replies.length > 0 && (
-                      <div className="replies mt-2 ps-3 border-start">
-                        {comment.replies.map(reply => (
-                          <div key={reply._id} className="reply mb-2">
-                            <div className="d-flex">
-                              <div className="flex-shrink-0">
-                                <div className="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style={{width: '24px', height: '24px'}}>
-                                  <i className="bi bi-person"></i>
-                                </div>
-                              </div>
-                              <div className="ms-2">
-                                <div className="d-flex">
-                                  <h6 className="mb-0 small">{reply.user?.name || 'Anonymous'}</h6>
-                                  <small className="text-muted ms-2">{new Date(reply.createdAt).toLocaleString()}</small>
-                                </div>
-                                <p className="mb-0 small">{reply.text}</p>
-                              </div>
-                            </div>
+                    {comment.replies && comment.replies.map(reply => (
+                      <div key={reply._id} className="d-flex mt-3 ms-4">
+                        {/* Reply User Avatar */}
+                        <div className="me-2">
+                          <Image
+                            src={reply.user.avatar || '/Avatars/OIP (1).jpeg'}
+                            roundedCircle
+                            width="30"
+                            height="30"
+                            alt={reply.user.name || 'User'}
+                          />
+                        </div>
+
+                        {/* Reply Content */}
+                        <div className="flex-grow-1">
+                          <div className="d-flex align-items-center">
+                            <strong className="me-2">{reply.user.name || 'Anonymous'}</strong>
+                            <small className="text-muted">{new Date(reply.createdAt).toLocaleString()}</small>
+                            {/* Delete button for replies */}
+                            {(() => {
+  console.log('Reply delete button check - Current User:', currentUser);
+  console.log('Reply delete button check - Reply User:', reply.user);
+  return (String(currentUser?.id) === String(reply.user?._id) || currentUser?.role === 'admin') ? (
+    <Button
+      variant="link"
+      className="text-danger p-0 small ms-2"
+      onClick={(e) => handleDeleteReply(comment._id, reply._id, e)}
+    >
+      Delete
+    </Button>
+  ) : null;
+})()}
                           </div>
-                        ))}
+                          <p className="mb-0">{reply.text}</p>
+                        </div>
                       </div>
-                    )}
-                    
+                    ))}
+
                     {/* Reply form */}
                     {replyingTo === comment._id && (
                       <div className="reply-form mt-2">
@@ -682,7 +840,7 @@ function IncidentsList() {
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2 className="fs-4 fw-semibold mb-0">All Posts</h2>
                 <div className="d-flex gap-2">
-                  <Link to="/submit-incident" className="btn btn-primary">Submit Post</Link>
+                  <Link to="/submit-post" className="btn btn-primary">Submit Post</Link>
                 </div>
               </div>
               
@@ -782,10 +940,10 @@ function IncidentsList() {
             ) : filteredIncidents.length === 0 ? (
               <div className="text-center py-5">
                 <p className="text-muted">No posts found. Be the first to submit a post!</p>
-                <Button as={Link} to="/submit-incident" variant="primary" className="mt-3">
+                <Button as={Link} to="/submit-post" variant="primary" className="mt-3">
                  
                     <div className="d-flex gap-2">
-                      <Link to="/submit-incident" className="btn btn-primary">Submit Post</Link>
+                      <Link to="/submit-post" className="btn btn-primary">Submit Post</Link>
                     </div>
                  
                 </Button>
@@ -825,111 +983,109 @@ function IncidentsList() {
         </Row>
       </Container>
       
-      {/* Comment Modal */}
-      <Modal show={showCommentModal} onHide={() => setShowCommentModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Comments</Modal.Title>
-        </Modal.Header>
+     {/* Comments Modal */}
+     <Modal show={showCommentModal} onHide={() => { setShowCommentModal(false); setReplyingTo(null); setCommentText(''); setReplyText(''); setExpandedComments({}); }}>
+        {/* ... existing code ... */}
         <Modal.Body>
-          {loadingComments ? (
-            <div className="text-center py-4">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading comments...</span>
-              </div>
-            </div>
-          ) : comments.length === 0 ? (
-            <p className="text-center text-muted py-4">No comments yet. Be the first to comment!</p>
-          ) : (
-            <div className="comment-list">
-              {comments.map(comment => (
+          {/* ... existing code ... */}
+          <div className="comments-list mt-4">
+            {loadingComments ? (
+              <div className="text-center">Loading comments...</div>
+            ) : comments.length === 0 ? (
+              <div className="text-center text-muted">No comments yet.</div>
+            ) : (
+              comments.map(comment => (
                 <div key={comment._id} className="comment mb-3 pb-3 border-bottom">
-                  <div className="d-flex">
-                    <div className="flex-shrink-0">
-                      <div className="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style={{width: '40px', height: '40px'}}>
-                        <i className="bi bi-person"></i>
+                  <div className="d-flex align-items-start">
+                    <div className="flex-shrink-0 me-2">
+                      {/* User Avatar Placeholder */}
+                      <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                           style={{ width: '30px', height: '30px', fontSize: '12px' }}>
+                        {comment.user?.name?.charAt(0).toUpperCase() || 'U'}
                       </div>
                     </div>
-                    <div className="ms-3 flex-grow-1">
-                      <div className="d-flex justify-content-between">
-                        <h6 className="mb-0">{comment.user?.name || 'Anonymous'}</h6>
+                    <div className="flex-grow-1">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <strong className="small">{comment.user?.name || 'Anonymous'}</strong>
                         <small className="text-muted">{new Date(comment.createdAt).toLocaleString()}</small>
                       </div>
-                      <p className="mb-1">{comment.text}</p>
-                      <Button 
-                        variant="link" 
-                        className="p-0 text-muted small"
-                        onClick={() => handleReply(comment._id)}
-                      >
-                        Reply
-                      </Button>
-                      
-                      {/* Replies */}
+                      <p className="mb-1 small">{comment.text}</p>
+                      <div className="d-flex gap-2 small">
+                        <Button variant="link" className="p-0 text-primary" onClick={() => setReplyingTo(comment._id)}>Reply</Button>
+                        {/* Add Delete Button - Visible only to Admin */}
+                        {currentUser?.role === 'admin' && (
+                          <Button
+                            variant="link"
+                            className="p-0 text-danger"
+                            onClick={(e) => handleDeleteComment(comment._id, e)}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                      {/* Reply form */}
+                      {replyingTo === comment._id && (
+                        <Form className="mt-2" onSubmit={(e) => { // Change onSubmit handler
+                          e.preventDefault(); // Prevent default form submission
+                          handleSubmitReply(); // Call the correct function
+                        }}>
+                          <InputGroup size="sm">
+                            <Form.Control
+                              as="textarea"
+                              rows={1}
+                              placeholder={`Reply to ${comment.user?.name || 'this comment'}...`}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                            />
+                            <Button variant="primary" type="submit">Post Reply</Button>
+                          </InputGroup>
+                        </Form>
+                      )}
+                      {/* Display Replies */}
                       {comment.replies && comment.replies.length > 0 && (
                         <div className="replies mt-2 ps-3 border-start">
                           {comment.replies.map(reply => (
-                            <div key={reply._id} className="reply mb-2">
-                              <div className="d-flex">
-                                <div className="flex-shrink-0">
-                                  <div className="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style={{width: '30px', height: '30px'}}>
-                                    <i className="bi bi-person"></i>
+                            <div key={reply._id} className="reply mb-2 pb-2 border-bottom">
+                              <div className="d-flex align-items-start">
+                                <div className="flex-shrink-0 me-2">
+                                  {/* User Avatar Placeholder */}
+                                  <div className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                       style={{ width: '25px', height: '25px', fontSize: '10px' }}>
+                                    {reply.user?.name?.charAt(0).toUpperCase() || 'U'}
                                   </div>
                                 </div>
-                                <div className="ms-2">
-                                  <div className="d-flex">
-                                    <h6 className="mb-0 small">{reply.user?.name || 'Anonymous'}</h6>
-                                    <small className="text-muted ms-2">{new Date(reply.createdAt).toLocaleString()}</small>
+                                <div className="flex-grow-1">
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <strong className="small">{reply.user?.name || 'Anonymous'}</strong>
+                                    <small className="text-muted">{new Date(reply.createdAt).toLocaleString()}</small>
                                   </div>
-                                  <p className="mb-0 small">{reply.text}</p>
+                                  <p className="mb-1 small">{reply.text}</p>
+                                  {/* Add Delete Button for Replies - Visible only to Admin */}
+                                  {currentUser?.role === 'admin' && (
+                                    <Button
+                                      variant="link"
+                                      className="p-0 text-danger small"
+                                      onClick={(e) => handleDeleteComment(reply._id, e)} // Assuming replies are also comments with their own IDs
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
-                      
-                      {/* Reply form */}
-                      {replyingTo === comment._id && (
-                        <div className="reply-form mt-2">
-                          <InputGroup>
-                            <Form.Control
-                              size="sm"
-                              placeholder="Write a reply..."
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                            />
-                            <Button variant="outline-primary" onClick={handleSubmitReply}>
-                              Reply
-                            </Button>
-                          </InputGroup>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          
-          {/* New comment form */}
-          <div className="new-comment-form mt-3">
-            <Form.Group>
-              <Form.Label>Add a comment</Form.Label>
-              <InputGroup>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  placeholder="Write your comment..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                />
-                <Button variant="primary" onClick={handleSubmitComment}>
-                  Comment
-                </Button>
-              </InputGroup>
-            </Form.Group>
+              ))
+            )}
           </div>
         </Modal.Body>
+        {/* ... existing code ... */}
       </Modal>
+
       
       {/* Poll Voting Modal */}
       <Modal show={showPollModal} onHide={() => setShowPollModal(false)} centered>
@@ -976,4 +1132,4 @@ function IncidentsList() {
   );
 }
 
-export default IncidentsList;
+export default PostsList;

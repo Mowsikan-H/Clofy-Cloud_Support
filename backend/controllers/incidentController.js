@@ -533,3 +533,116 @@ exports.removeVote = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// Delete an incident (Admin only)
+exports.deleteIncident = async (req, res) => {
+  try {
+    const incident = await Incident.findById(req.params.id);
+
+    if (!incident) {
+      return res.status(404).json({
+        success: false,
+        message: 'Incident not found'
+      });
+    }
+
+    // The authorize('admin') middleware already ensures the user is an admin,
+    // so we don't need to check ownership here. Admins can delete any incident.
+    await incident.deleteOne(); // Use deleteOne() instead of remove()
+
+    return res.status(200).json({
+      success: true,
+      data: {} // Return empty data or a success message
+    });
+  } catch (err) {
+    console.error('Error deleting incident:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// Update the deleteComment function to check ownership
+exports.deleteComment = async (req, res) => {
+  try {
+    const incident = await Incident.findById(req.params.incidentId);
+    if (!incident) {
+      return res.status(404).json({ success: false, message: 'Incident not found' });
+    }
+
+    // Find the comment
+    const comment = incident.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    // Check if user is admin or comment owner
+    if (req.user.role !== 'admin' && comment.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this comment' });
+    }
+
+    // Remove the comment
+    incident.comments.pull(req.params.commentId);
+    await incident.save();
+
+    return res.json({ success: true, message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Update the deleteReply function to check ownership
+exports.deleteReply = async (req, res) => {
+  try {
+    const incident = await Incident.findById(req.params.incidentId);
+    if (!incident) {
+      return res.status(404).json({ success: false, message: 'Incident not found' });
+    }
+
+    // Find the comment
+    const comment = incident.comments.id(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
+
+    // Find the reply
+    const reply = comment.replies.id(req.params.replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    // Check if user is admin or reply owner
+    if (req.user.role !== 'admin' && reply.user.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this reply' });
+    }
+
+    // Remove the reply
+    comment.replies.pull(req.params.replyId);
+    await incident.save();
+
+    return res.json({ success: true, message: 'Reply deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting reply:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Add a new route to get the total incident count
+exports.getIncidentCount = async (req, res) => {
+  try {
+    const count = await Incident.countDocuments();
+    
+    return res.json({
+      success: true,
+      data: { count }
+    });
+  } catch (err) {
+    console.error('Error fetching incident count:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};

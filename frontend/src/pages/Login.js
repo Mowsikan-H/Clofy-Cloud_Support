@@ -18,7 +18,7 @@ function Login() {
   const location = useLocation();
   
   // Get the redirect path from location state or default to incidents list
-  const from = location.state?.from?.pathname || '/incidents';
+  const from = location.state?.from?.pathname || '/posts';
   
   async function handleSubmit(e) {
     e.preventDefault();

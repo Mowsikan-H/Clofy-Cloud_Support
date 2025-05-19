@@ -26,7 +26,7 @@ function Register() {
       setError('');
       setLoading(true);
       await register(email, password);
-      navigate('/incidents');
+      navigate('/posts');
     } catch (error) {
       setError('Failed to create an account');
     } finally {

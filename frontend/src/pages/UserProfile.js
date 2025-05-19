@@ -260,8 +260,12 @@ function UserProfile() {
   
   // Handle account deletion
   const handleDeleteAccount = async () => {
+    setError(null);
+    setSuccess(null);
+    
+    // Change the check to compare with the user's email
     if (deleteConfirmation !== currentUser?.email) {
-      setError('Email confirmation does not match');
+      setError('Please type your email exactly as shown to confirm.');
       return;
     }
     
@@ -271,19 +275,19 @@ function UserProfile() {
       const response = await api.users.deleteAccount();
       
       if (response && response.success) {
-        // Log the user out
+        setSuccess('Account deleted successfully');
+        // Log out the user and redirect to home or login page
         logout();
-        // Redirect to home page
-        navigate('/');
+        navigate('/'); // Or navigate to '/login'
       } else {
         setError(response?.message || 'Failed to delete account');
-        setShowDeleteModal(false);
       }
     } catch (err) {
       setError(err.message || 'An error occurred while deleting account');
-      setShowDeleteModal(false);
     } finally {
       setLoading(false);
+      setShowDeleteModal(false); // Close modal regardless of success/failure
+      setDeleteConfirmation(''); // Clear confirmation input
     }
   };
   
@@ -529,7 +533,7 @@ function UserProfile() {
                     <Card.Body className="p-4">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h2 className="fs-5 fw-semibold mb-0">My Questions</h2>
-                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                        <Button as={Link} to="/submit-post" variant="outline-primary" size="sm">
                           Ask a Question
                         </Button>
                       </div>
@@ -561,7 +565,7 @@ function UserProfile() {
                       ) : (
                         <div className="text-center py-3">
                           <p className="text-muted mb-3">You haven't asked any questions yet.</p>
-                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                          <Button as={Link} to="/submit-post" variant="primary" size="sm">
                             Ask Your First Question
                           </Button>
                         </div>
@@ -576,7 +580,7 @@ function UserProfile() {
                     <Card.Body className="p-4">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h2 className="fs-5 fw-semibold mb-0">My Issues</h2>
-                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                        <Button as={Link} to="/submit-post" variant="outline-primary" size="sm">
                           Report an Issue
                         </Button>
                       </div>
@@ -608,7 +612,7 @@ function UserProfile() {
                       ) : (
                         <div className="text-center py-3">
                           <p className="text-muted mb-3">You haven't reported any issues yet.</p>
-                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                          <Button as={Link} to="/submit-post" variant="primary" size="sm">
                             Report Your First Issue
                           </Button>
                         </div>
@@ -623,7 +627,7 @@ function UserProfile() {
                     <Card.Body className="p-4">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h2 className="fs-5 fw-semibold mb-0">My Polls</h2>
-                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                        <Button as={Link} to="/submit-post" variant="outline-primary" size="sm">
                           Create a Poll
                         </Button>
                       </div>
@@ -655,7 +659,7 @@ function UserProfile() {
                       ) : (
                         <div className="text-center py-3">
                           <p className="text-muted mb-3">You haven't created any polls yet.</p>
-                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                          <Button as={Link} to="/submit-post" variant="primary" size="sm">
                             Create Your First Poll
                           </Button>
                         </div>
@@ -670,7 +674,7 @@ function UserProfile() {
                     <Card.Body className="p-4">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h2 className="fs-5 fw-semibold mb-0">My News</h2>
-                        <Button as={Link} to="/submit-incident" variant="outline-primary" size="sm">
+                        <Button as={Link} to="/submit-post" variant="outline-primary" size="sm">
                           Post News
                         </Button>
                       </div>
@@ -702,7 +706,7 @@ function UserProfile() {
                       ) : (
                         <div className="text-center py-3">
                           <p className="text-muted mb-3">You haven't posted any news yet.</p>
-                          <Button as={Link} to="/submit-incident" variant="primary" size="sm">
+                          <Button as={Link} to="/submit-post" variant="primary" size="sm">
                             Post Your First News
                           </Button>
                         </div>

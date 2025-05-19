@@ -7,7 +7,7 @@ import Footer from '../components/Footer';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-function SubmitIncident() {
+function SubmitPost() {
   const [showModal, setShowModal] = useState(false);
   const [showReadyModal, setShowReadyModal] = useState(false);
   const [title, setTitle] = useState('');
@@ -166,7 +166,7 @@ function SubmitIncident() {
       const response = await api.incidents.create(data);
       
       if (response.success) {
-        navigate(`/incidents`);
+        navigate(`/posts`);
       } else {
         setError(response.message || 'Failed to create incident');
       }
@@ -262,7 +262,7 @@ function SubmitIncident() {
             {/* Detailed Description */}
             <Form.Group className="mb-4">
               <Form.Label className="fw-medium">
-                Detailed Description <span className="text-muted small">(optional)</span>
+                Detailed Description <span className="text-muted small">(required)</span>
               </Form.Label>
               <Form.Control 
                 as="textarea" 
@@ -982,4 +982,4 @@ function SubmitIncident() {
   );
 }
 
-export default SubmitIncident;
+export default SubmitPost;

@@ -10,8 +10,8 @@ function Sidebar({ activePage }) {
   
   // Define all navigation items
   const publicNavItems = [
-    { id: 'questions', label: 'All Posts', path: '/incidents', icon: 'bi-list-ul' },
-    { id: 'submit', label: 'Submit Post', path: '/submit-incident', icon: 'bi-plus-circle' },
+    { id: 'questions', label: 'All Posts', path: '/posts', icon: 'bi-list-ul' },
+    { id: 'submit', label: 'Submit Post', path: '/submit-post', icon: 'bi-plus-circle' },
   ];
   
   // Add authenticated-only items if user is logged in
@@ -20,7 +20,7 @@ function Sidebar({ activePage }) {
   // Only add these items if user is logged in
   if (currentUser) {
     navItems.push(
-      { id: 'mytickets', label: 'My Posts', path: '/my-queries', icon: 'bi-ticket' },
+      { id: 'mytickets', label: 'My Posts', path: '/my-posts', icon: 'bi-ticket' },
       { id: 'settings', label: 'My Profile', path: '/profile', icon: 'bi-gear' }
     );
   }

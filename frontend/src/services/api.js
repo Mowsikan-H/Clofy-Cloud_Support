@@ -187,7 +187,35 @@ export const incidents = {
     } catch (error) {
       return handleApiError(error);
     }
-  }
+  },
+
+  deleteIncident: async (id) => {
+    try {
+      const response = await axios.delete(`/incidents/${id}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  deleteComment: async (incidentId, commentId) => {
+    try {
+      const response = await axios.delete(`/incidents/${incidentId}/comments/${commentId}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  // Add this function to delete a reply
+  deleteReply: async (incidentId, commentId, replyId) => {
+    try {
+      const response = await axios.delete(`/incidents/${incidentId}/comments/${commentId}/replies/${replyId}`);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
 };
 
 // Users API

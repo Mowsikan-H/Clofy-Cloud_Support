@@ -14,15 +14,14 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import SubmitIncident from './pages/SubmitIncident';
-import IncidentDetail from './pages/IncidentDetail';
-import IncidentsList from './pages/IncidentsList';
+import SubmitPost from './pages/Submitpost';
+import PostsList from './pages/PostsList';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AccountBilling from './pages/AccountBilling';
 import PricingPlans from './pages/PricingPlans';
 import AdminModeration from './pages/AdminModeration';
 import Legal from './pages/Legal';
-import MyQueries from './pages/MyQueries';
+import MyPosts from './pages/Myposts';
 import SLADashboard from './pages/SLADashboard';
 import TagsCategories from './pages/TagsCategories';
 import UserProfile from './pages/UserProfile';
@@ -37,37 +36,28 @@ function App() {
         <ToastProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<IncidentsList />} /> {/* Changed from Landing to IncidentsList */}
+            <Route path="/" element={<PostsList />} /> {/* Changed from Landing to IncidentsList */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/pricing" element={<PricingPlans />} />
-            <Route path="/legal" element={<Legal />} />
+            
             
             {/* Protected Routes */}
-            <Route path="/dashboard" element={
+           
+            <Route path="/submit-post" element={
               <PrivateRoute>
-                <Dashboard />
+                <SubmitPost />
               </PrivateRoute>
             } />
-            <Route path="/submit-incident" element={
+           
+            <Route path="/posts" element={
               <PrivateRoute>
-                <SubmitIncident />
-              </PrivateRoute>
-            } />
-            <Route path="/incident/:id" element={
-              <PrivateRoute>
-                <IncidentDetail />
-              </PrivateRoute>
-            } />
-            <Route path="/incidents" element={
-              <PrivateRoute>
-                <IncidentsList />
+                <PostsList />
               </PrivateRoute>
             } />
            
             {/* Knowledge Base Routes */}
-            <Route path="/knowledge-base" element={<KnowledgeBase />} />
-            <Route path="/knowledge-base/:id" element={<KnowledgeBaseDetail />} />
+           
             <Route path="/account-billing" element={
               <PrivateRoute>
                 <AccountBilling />
@@ -78,17 +68,8 @@ function App() {
                 <AdminModeration />
               </PrivateRoute>
             } />
-            <Route path="/my-queries" element={<MyQueries />} /> {/* Removed PrivateRoute wrapper */}
-            <Route path="/sla-dashboard" element={
-              <PrivateRoute>
-                <SLADashboard />
-              </PrivateRoute>
-            } />
-            <Route path="/tags" element={
-              <PrivateRoute>
-                <TagsCategories />
-              </PrivateRoute>
-            } />
+            <Route path="/my-posts" element={<MyPosts />} /> {/* Removed PrivateRoute wrapper */}
+           
             <Route path="/profile" element={<UserProfile />} /> {/* Removed PrivateRoute wrapper */}
           </Routes>
         </ToastProvider>

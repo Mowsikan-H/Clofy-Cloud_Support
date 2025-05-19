@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Badge, ProgressBar, Modal, InputGroup, Form } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-function MyQueries() {
+function MyPosts() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { currentUser } = useAuth();
-  
+  const { currentUser, logout } = useAuth(); // Get logout from context
+  const navigate = useNavigate(); // Get navigate hook
+
   // Add comment-related state variables
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [currentIncident, setCurrentIncident] = useState(null);
@@ -22,14 +23,28 @@ function MyQueries() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
-  
+
+  // Add state for deletion loading
+  const [deletingIncidentId, setDeletingIncidentId] = useState(null);
+
+  // Add useEffect to redirect if user is not logged in
   useEffect(() => {
-    // Only fetch user incidents if the user is logged in
-    if (currentUser._id || currentUser.id) { // Ensure currentUser and id are defined
+    if (!currentUser) {
+      // Redirect to login page if user is not logged in
+      navigate('/login'); // Adjust the login route if necessary
+    } else {
+      // Only fetch user incidents if the user is logged in
       const fetchUserIncidents = async () => {
         try {
           setLoading(true);
-          const response = await api.incidents.getUserIncidents(currentUser._id || currentUser.id);
+          // Use currentUser._id if available, fallback to currentUser.id
+          const userId = currentUser._id || currentUser.id;
+          if (!userId) {
+             setError('User ID not available.');
+             setLoading(false);
+             return;
+          }
+          const response = await api.incidents.getUserIncidents(userId);
           if (response && response.success) {
             setIncidents(response.data || []);
           } else {
@@ -42,16 +57,14 @@ function MyQueries() {
         }
       };
       fetchUserIncidents();
-    } else {
-      setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, navigate]); // Add navigate to dependency array
 
   const filteredIncidents = incidents.filter(incident => {
     if (activeFilter === 'all') return true;
     return incident.status === activeFilter;
   });
-  
+
   // Handle upvoting an incident
   const handleUpvote = async (incidentId, e) => {
     e.preventDefault(); // Prevent navigation
@@ -178,7 +191,83 @@ function MyQueries() {
       console.error('Error adding reply:', err);
     }
   };
+  const handleDeleteComment = async (commentId) => {
+    if (!currentUser || !currentIncident) return;
   
+    try {
+      const response = await api.incidents.deleteComment(currentIncident._id, commentId);
+      if (response && response.success) {
+        // Remove the deleted comment from the state
+        setComments(comments.filter(comment => comment._id !== commentId));
+      } else {
+        console.error('Failed to delete comment');
+      }
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+    }
+  };
+  
+  // Handle deleting a reply
+  const handleDeleteReply = async (commentId, replyId) => {
+    if (!currentUser || !currentIncident) return;
+  
+    try {
+      const response = await api.incidents.deleteReply(currentIncident._id, commentId, replyId);
+      if (response && response.success) {
+        // Update the comments list to remove the deleted reply
+        const updatedComments = comments.map(comment => {
+          if (comment._id === commentId) {
+            return {
+              ...comment,
+              replies: comment.replies.filter(reply => reply._id !== replyId)
+            };
+          }
+          return comment;
+        });
+        setComments(updatedComments);
+      } else {
+        console.error('Failed to delete reply');
+      }
+    } catch (err) {
+      console.error('Error deleting reply:', err);
+    }
+  };
+
+  // Add the handleDeleteIncident function
+  const handleDeleteIncident = async (incidentId) => {
+    if (!currentUser) {
+      alert('You must be logged in to delete a post.');
+      return;
+    }
+
+    // Optional: Add a confirmation dialog
+    if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingIncidentId(incidentId); // Set loading state for this incident
+
+    try {
+      // Call the deleteIncident API function
+      const response = await api.incidents.deleteIncident(incidentId);
+
+      if (response && response.success) {
+        // Remove the deleted incident from the state
+        setIncidents(incidents.filter(incident => incident._id !== incidentId));
+        alert('Post deleted successfully.');
+      } else {
+        console.error('Failed to delete incident:', response);
+        alert(response?.message || 'Failed to delete post.');
+      }
+    } catch (err) {
+      console.error('Error deleting incident:', err);
+      alert(err.message || 'An error occurred while deleting the post.');
+    } finally {
+      setDeletingIncidentId(null); // Reset loading state
+    }
+  };
+
+
   // Render different card layouts based on incident type
   const renderIncidentCard = (incident) => {
     const commonElements = (
@@ -199,32 +288,50 @@ function MyQueries() {
     // Interactive elements for all card types
     const interactiveElements = (
       <div className="d-flex mt-3 pt-2 border-top">
-        <Button 
-          variant="link" 
-          className="text-muted p-0 me-3 d-flex align-items-center"
-          onClick={(e) => handleUpvote(incident._id, e)}
-          disabled={incident.hasVoted}
-        >
-          <i className={`bi bi-hand-thumbs-up${incident.hasVoted ? '-fill' : ''} me-1`}></i>
-          <span>{typeof incident.votes === 'object' ? JSON.stringify(incident.votes) : incident.votes || 0} Upvotes</span>
-        </Button>
-        
-        <Button 
-          variant="link" 
+        {/* Removed Upvote Button */}
+
+        <Button
+          variant="link"
           className="text-muted p-0 me-3 d-flex align-items-center"
           onClick={() => handleOpenComments(incident)}
         >
           <i className="bi bi-chat-left-text me-1"></i>
           <span>{incident.comments?.length || 0} Comments</span>
         </Button>
-        
-        <Button 
+
+        {/* Add Delete Button - only show if the current user is the owner */}
+        {currentUser && incident.user && (currentUser._id === incident.user._id || currentUser.id === incident.user._id) && (
+           <Button
+            variant="link"
+            className="text-danger p-0 d-flex align-items-center"
+            onClick={(e) => {
+              e.preventDefault(); // Prevent navigation
+              handleDeleteIncident(incident._id);
+            }}
+            disabled={deletingIncidentId === incident._id} // Disable while deleting
+          >
+            {deletingIncidentId === incident._id ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-trash me-1"></i>
+                Delete
+              </>
+            )}
+          </Button>
+        )}
+
+
+        <Button
           as={Link}
           to={`/incident/${incident._id}`}
-          variant="link" 
+          variant="link"
           className="text-muted p-0 d-flex align-items-center ms-auto"
         >
-          
+          View Details <i className="bi bi-arrow-right ms-1"></i> {/* Added View Details link */}
         </Button>
       </div>
     );
@@ -253,13 +360,13 @@ function MyQueries() {
                   <p className="text-muted small mt-2">{incident.description ? incident.description.substring(0, 150) + '...' : 'No description available'}</p>
                   {commonElements}
                   {userInfo}
-                  {interactiveElements}
+                  {interactiveElements} {/* Use the updated interactiveElements */}
                 </div>
               </div>
             </Card.Body>
           </Card>
         );
-        
+
       case 'issue':
         return (
           <Card key={incident._id} className="shadow-sm hover-border-primary border-start border-danger border-3">
@@ -287,17 +394,17 @@ function MyQueries() {
                   <p className="text-muted small mt-2">{incident.description ? incident.description.substring(0, 120) + '...' : 'No description available'}</p>
                   {commonElements}
                   {userInfo}
-                  {interactiveElements}
+                  {interactiveElements} {/* Use the updated interactiveElements */}
                 </div>
               </div>
             </Card.Body>
           </Card>
         );
-        
+
       case 'poll':
         // Calculate total votes for percentage
         const totalVotes = incident.options?.reduce((sum, option) => sum + (option.votes || 0), 0) || 0;
-        
+
         return (
           <Card key={incident._id} className="shadow-sm hover-border-primary border-start border-info border-3">
             <Card.Body className="p-3">
@@ -310,17 +417,17 @@ function MyQueries() {
                 </div>
                 <div>{renderStatusBadge(incident.status)}</div>
               </div>
-              
+
               <div className="mt-3 mb-2">
                 {incident.options?.slice(0, 3).map((option, index) => (
                   <div key={index} className="mb-2">
                     <div className="d-flex justify-content-between small mb-1">
                       <span>{typeof option === 'object' ? option.text : String(option)}</span>
-                     
+
                     </div>
-                    <ProgressBar 
-                      now={totalVotes ? ((typeof option === 'object' ? option.votes || 0 : 0) / totalVotes) * 100 : 0} 
-                      variant="info" 
+                    <ProgressBar
+                      now={totalVotes ? ((typeof option === 'object' ? option.votes || 0 : 0) / totalVotes) * 100 : 0}
+                      variant="info"
                       style={{height: '8px'}}
                     />
                   </div>
@@ -331,19 +438,19 @@ function MyQueries() {
                   </div>
                 )}
               </div>
-              
+
               <div className="d-flex justify-content-between align-items-center small text-muted mt-3">
                 <span>{totalVotes} total votes</span>
                 <span>Ends: {incident.endDate ? new Date(incident.endDate).toLocaleDateString() : 'N/A'}</span>
               </div>
-              
+
               {commonElements}
               {userInfo}
-              {interactiveElements}
+              {interactiveElements} {/* Use the updated interactiveElements */}
             </Card.Body>
           </Card>
         );
-        
+
       case 'news':
         return (
           <Card key={incident._id} className="shadow-sm hover-border-primary border-start border-success border-3">
@@ -357,15 +464,15 @@ function MyQueries() {
                 </div>
                 <div>{renderStatusBadge(incident.status)}</div>
               </div>
-              
+
               {incident.excerpt && (
                 <div className="bg-light p-2 border-start border-success border-2 my-2 fst-italic">
                   <p className="small mb-0">{incident.excerpt}</p>
                 </div>
               )}
-              
+
               <p className="text-muted small mt-2">{incident.description ? incident.description.substring(0, 120) + '...' : 'No description available'}</p>
-              
+
               <div className="d-flex justify-content-between align-items-center small text-muted">
                 <span>
                   {incident.newsDate ? new Date(incident.newsDate).toLocaleDateString() : new Date(incident.createdAt).toLocaleDateString()}
@@ -376,14 +483,14 @@ function MyQueries() {
                   </a>
                 )}
               </div>
-              
+
               {commonElements}
               {userInfo}
-              {interactiveElements}
+              {interactiveElements} {/* Use the updated interactiveElements */}
             </Card.Body>
           </Card>
         );
-        
+
       default:
         // Default card for any other type
         return (
@@ -398,7 +505,7 @@ function MyQueries() {
               <p className="text-muted small mt-2">{incident.description ? incident.description.substring(0, 150) + '...' : 'No description available'}</p>
               {commonElements}
               {userInfo}
-              {interactiveElements}
+              {interactiveElements} {/* Use the updated interactiveElements */}
             </Card.Body>
           </Card>
         );
@@ -406,171 +513,169 @@ function MyQueries() {
   };
   
   return (
-    <div className="bg-light min-vh-100">
-      <Header />
-      <Container fluid className="py-4">
-        <Row>
-          {/* Left Sidebar */}
-          <Col lg={2} className="d-none d-lg-block">
-            <Sidebar activePage="mytickets" />
-          </Col>
-          
-          {/* Main Content */}
-          <Col lg={7} md={8}>
-            <h2 className="fs-3 fw-semibold mb-4">My Posts</h2>
-           
-            {/* Loading and Error States */}
-            {loading ? (
-              <div className="text-center py-5">
+    // Add conditional rendering based on currentUser
+    !currentUser ? (
+      // Optionally render a loading spinner or null while redirecting
+      <div className="text-center py-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    ) : (
+      <div className="bg-light min-vh-100">
+        <Header />
+        <Container fluid className="py-4">
+          <Row>
+            {/* Left Sidebar */}
+            <Col lg={2} className="d-none d-lg-block">
+              <Sidebar activePage="mytickets" />
+            </Col>
+
+            {/* Main Content */}
+            <Col lg={7} md={8}>
+              <h2 className="fs-3 fw-semibold mb-4">My Posts</h2>
+
+              {/* Loading and Error States */}
+              {loading ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="alert alert-danger">{error}</div>
+              ) : filteredIncidents.length === 0 ? (
+                <div className="text-center py-5">
+                  <p className="text-muted">No posts found.</p>
+                  <Link to="/submit-post" className="btn btn-primary mt-2">Create a New Post</Link>
+                </div>
+              ) : (
+                /* Posts List */
+                <div className="d-flex flex-column gap-3">
+                  {filteredIncidents.map(incident => renderIncidentCard(incident))}
+                </div>
+              )}
+            </Col>
+
+            {/* Right Sidebar */}
+            {/* ... existing Right Sidebar content ... */}
+            <Col lg={3} className="d-none d-xl-block">
+              {/* Summary */}
+              <Card className="shadow-sm mb-4">
+                <Card.Body className="p-4">
+                  <h4 className="fs-5 fw-semibold mb-2">Post Summary</h4>
+                  <ul className="list-unstyled small">
+                    <li className="mb-2">Total Posts: <span className="fw-medium">{incidents.length}</span></li>
+                    <li className="mb-2">Open: <span className="fw-medium">
+                      {incidents.filter(incident => incident.status === 'open').length}
+                    </span></li>
+                    <li className="mb-2">Answered: <span className="fw-medium">
+                      {incidents.filter(incident => incident.status === 'answered').length}
+                    </span></li>
+                    <li>Escalated: <span className="fw-medium">
+                      {incidents.filter(incident => incident.status === 'escalated').length}
+                    </span></li>
+                  </ul>
+                </Card.Body>
+              </Card>
+
+              {/* Upgrade CTA */}
+              <Card className="shadow-sm">
+                <Card.Body className="p-4">
+                  <h4 className="fs-5 fw-semibold mb-2">Need More Support?</h4>
+                  <p className="text-muted mb-3">Upgrade for AI or engineer responses.</p>
+                  <Link to="/pricing" className="btn btn-primary d-block">View Plans</Link>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Container>
+        <Footer />
+
+        {/* Comment Modal */}
+        {/* ... existing Comment Modal ... */}
+        <Modal show={showCommentModal} onHide={() => setShowCommentModal(false)} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>Comments</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {loadingComments ? (
+              <div className="text-center py-4">
                 <div className="spinner-border text-primary" role="status">
                   <span className="visually-hidden">Loading...</span>
                 </div>
               </div>
-            ) : error ? (
-              <div className="alert alert-danger">{error}</div>
-            ) : filteredIncidents.length === 0 ? (
-              <div className="text-center py-5">
-                <p className="text-muted">No posts found.</p>
-                <Link to="/submit-incident" className="btn btn-primary mt-2">Create a New Post</Link>
+            ) : comments.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-muted">No comments yet. Be the first to comment!</p>
               </div>
             ) : (
-              /* Posts List */
               <div className="d-flex flex-column gap-3">
-                {filteredIncidents.map(incident => renderIncidentCard(incident))}
-              </div>
-            )}
-          </Col>
-          
-          {/* Right Sidebar */}
-          <Col lg={3} className="d-none d-xl-block">
-            {/* Summary */}
-            <Card className="shadow-sm mb-4">
-              <Card.Body className="p-4">
-                <h4 className="fs-5 fw-semibold mb-2">Post Summary</h4>
-                <ul className="list-unstyled small">
-                  <li className="mb-2">Total Posts: <span className="fw-medium">{incidents.length}</span></li>
-                  <li className="mb-2">Open: <span className="fw-medium">
-                    {incidents.filter(incident => incident.status === 'open').length}
-                  </span></li>
-                  <li className="mb-2">Answered: <span className="fw-medium">
-                    {incidents.filter(incident => incident.status === 'answered').length}
-                  </span></li>
-                  <li>Escalated: <span className="fw-medium">
-                    {incidents.filter(incident => incident.status === 'escalated').length}
-                  </span></li>
-                </ul>
-              </Card.Body>
-            </Card>
-            
-            {/* Upgrade CTA */}
-            <Card className="shadow-sm">
-              <Card.Body className="p-4">
-                <h4 className="fs-5 fw-semibold mb-2">Need More Support?</h4>
-                <p className="text-muted mb-3">Upgrade for AI or engineer responses.</p>
-                <Link to="/pricing" className="btn btn-primary d-block">View Plans</Link>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-      <Footer />
-      
-      {/* Comment Modal */}
-      <Modal show={showCommentModal} onHide={() => setShowCommentModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>Comments</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {loadingComments ? (
-            <div className="text-center py-4">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            </div>
-          ) : comments.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted">No comments yet. Be the first to comment!</p>
-            </div>
-          ) : (
-            <div className="d-flex flex-column gap-3">
-              {comments.map(comment => (
-                <Card key={comment._id} className="border-0 shadow-sm">
-                  <Card.Body>
-                    <div className="d-flex">
-                      <div className="me-3">
-                        <div className="bg-light rounded-circle p-2">
-                          <i className="bi bi-person fs-4"></i>
-                        </div>
-                      </div>
-                      <div className="flex-grow-1">
-                        <div className="d-flex justify-content-between">
-                          <h6 className="mb-1">{comment.user?.name || 'Anonymous'}</h6>
-                          <small className="text-muted">{new Date(comment.createdAt).toLocaleString()}</small>
-                        </div>
-                        <p className="mb-2">{comment.text}</p>
-                        <Button 
-                          variant="link" 
-                          className="p-0 text-primary" 
-                          onClick={() => handleReply(comment._id)}
-                        >
-                          Reply
-                        </Button>
-                        
-                        {/* Replies */}
-                        {comment.replies && comment.replies.length > 0 && (
-                          <div className="ms-4 mt-3 d-flex flex-column gap-3">
-                            {comment.replies.map(reply => (
-                              <div key={reply._id} className="border-start border-2 ps-3">
-                                <div className="d-flex justify-content-between">
-                                  <h6 className="mb-1 fs-6">{reply.user?.name || 'Anonymous'}</h6>
-                                  <small className="text-muted">{new Date(reply.createdAt).toLocaleString()}</small>
-                                </div>
-                                <p className="mb-0 small">{reply.text}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Reply form */}
-                        {replyingTo === comment._id && (
-                          <div className="mt-3">
-                            <InputGroup>
-                              <Form.Control
-                                placeholder="Write a reply..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                              />
-                              <Button variant="primary" onClick={handleSubmitReply}>
-                                Send
-                              </Button>
-                            </InputGroup>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
+               {comments.map(comment => (
+  <Card key={comment._id} className="border-0 shadow-sm">
+    <Card.Body>
+      <div className="d-flex">
+        <div className="me-3">
+          <div className="bg-light rounded-circle p-2">
+            <i className="bi bi-person fs-4"></i>
+          </div>
+        </div>
+        <div className="flex-grow-1">
+          <div className="d-flex justify-content-between">
+            <h6 className="mb-1">{comment.user?.name || 'Anonymous'}</h6>
+            <small className="text-muted">{new Date(comment.createdAt).toLocaleString()}</small>
+          </div>
+          <p className="mb-2">{comment.text}</p>
+          {currentUser && comment.user && (currentUser._id === comment.user._id || currentUser.id === comment.user._id) && (
+            <Button variant="link" className="text-danger p-0" onClick={() => handleDeleteComment(comment._id)}>
+              Delete
+            </Button>
+          )}
+          {/* Replies List */}
+          {comment.replies && comment.replies.length > 0 && (
+            <div className="mt-3 ps-4 border-start">
+              {comment.replies.map(reply => (
+                <div key={reply._id} className="mb-2">
+                  <div className="d-flex justify-content-between">
+                    <h6 className="mb-1 small">{reply.user?.name || 'Anonymous'}</h6>
+                    <small className="text-muted">{new Date(reply.createdAt).toLocaleString()}</small>
+                  </div>
+                  <p className="mb-1 small">{reply.text}</p>
+                  {currentUser && reply.user && (currentUser._id === reply.user._id || currentUser.id === reply.user._id) && (
+                    <Button variant="link" className="text-danger p-0" onClick={() => handleDeleteReply(comment._id, reply._id)}>
+                      Delete
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           )}
-          
-          {/* Comment input */}
-          <div className="mt-4">
+        </div>
+      </div>
+    </Card.Body>
+  </Card>
+))}
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
             <InputGroup>
               <Form.Control
+                as="textarea"
+                rows={2}
                 placeholder="Write a comment..."
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
               />
               <Button variant="primary" onClick={handleSubmitComment}>
-                Comment
+                Post Comment
               </Button>
             </InputGroup>
-          </div>
-        </Modal.Body>
-      </Modal>
-    </div>
+          </Modal.Footer>
+        </Modal>
+      </div>
+    )
   );
 }
 
-export default MyQueries;
+export default MyPosts;

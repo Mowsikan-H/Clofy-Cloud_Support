@@ -377,4 +377,14 @@ router.get('/user/:userId', protect, async (req, res) => {
   }
   });
 router.post('/', protect, incidentController.create);
+
+// Admin can delete any incident
+router.delete('/:id', protect, authorize('admin'), incidentController.deleteIncident); // Requires implementation in controller
+
+// Admin can delete any comment
+router.delete('/:incidentId/comments/:commentId', protect, authorize('admin'), incidentController.deleteComment); // Requires implementation in controller
+
+// Add route to delete a reply to a comment (Admin only)
+router.delete('/:incidentId/comments/:commentId/replies/:replyId', protect, authorize('admin'), incidentController.deleteReply);
+
 module.exports = router;
